@@ -6,13 +6,14 @@ import (
 	"gin-template/middleware"
 	"gin-template/model"
 	"gin-template/router"
+	"log"
+	"os"
+	"strconv"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	"log"
-	"os"
-	"strconv"
 )
 
 //go:embed web/build

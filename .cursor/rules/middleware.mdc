@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 中间件
+
+middleware目录包含各种HTTP请求处理中间件，用于在请求处理过程中执行通用逻辑。
+
+## 主要中间件
+
+- [middleware/auth.go](mdc:middleware/auth.go) - 身份验证和权限控制
+- [middleware/rate-limit.go](mdc:middleware/rate-limit.go) - 请求频率限制
+- [middleware/cors.go](mdc:middleware/cors.go) - 跨域资源共享设置
+- [middleware/cache.go](mdc:middleware/cache.go) - 静态资源缓存
+- [middleware/turnstile-check.go](mdc:middleware/turnstile-check.go) - Cloudflare Turnstile用户验证

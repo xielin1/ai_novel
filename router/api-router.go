@@ -3,6 +3,7 @@ package router
 import (
 	"gin-template/controller"
 	"gin-template/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,6 +11,7 @@ func SetApiRouter(router *gin.Engine) {
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
 	{
+
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/about", controller.GetAbout)
@@ -20,6 +22,14 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/oauth/wechat", middleware.CriticalRateLimit(), controller.WeChatAuth)
 		apiRouter.GET("/oauth/wechat/bind", middleware.CriticalRateLimit(), middleware.UserAuth(), controller.WeChatBind)
 		apiRouter.GET("/oauth/email/bind", middleware.CriticalRateLimit(), middleware.UserAuth(), controller.EmailBind)
+
+		// OpenAI API路由
+		aiRoute := apiRouter.Group("/ai")
+		aiRoute.Use(middleware.UserAuth()) // 需要登录才能使用
+		{
+			aiRoute.POST("/prompt", controller.AIPrompt)       // 提交提示并获取响应
+			aiRoute.GET("/models", controller.GetAIModels)     // 获取可用模型列表
+		}
 
 		userRoute := apiRouter.Group("/user")
 		{

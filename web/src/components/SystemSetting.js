@@ -25,6 +25,9 @@ const SystemSetting = () => {
     TurnstileSiteKey: '',
     TurnstileSecretKey: '',
     RegisterEnabled: '',
+    openai_api_key: '',
+    openai_default_model: '',
+    openai_api_base: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   let [loading, setLoading] = useState(false);
@@ -87,7 +90,10 @@ const SystemSetting = () => {
       name === 'WeChatServerToken' ||
       name === 'WeChatAccountQRCodeImageURL' ||
       name === 'TurnstileSiteKey' ||
-      name === 'TurnstileSecretKey'
+      name === 'TurnstileSecretKey' ||
+      name === 'openai_api_key' ||
+      name === 'openai_default_model' ||
+      name === 'openai_api_base'
     ) {
       setInputs((inputs) => ({ ...inputs, [name]: value }));
     } else {
@@ -166,6 +172,18 @@ const SystemSetting = () => {
       inputs.TurnstileSecretKey !== ''
     ) {
       await updateOption('TurnstileSecretKey', inputs.TurnstileSecretKey);
+    }
+  };
+
+  const submitOpenAI = async () => {
+    if (originInputs['openai_api_key'] !== inputs.openai_api_key) {
+      await updateOption('openai_api_key', inputs.openai_api_key);
+    }
+    if (originInputs['openai_default_model'] !== inputs.openai_default_model) {
+      await updateOption('openai_default_model', inputs.openai_default_model);
+    }
+    if (originInputs['openai_api_base'] !== inputs.openai_api_base) {
+      await updateOption('openai_api_base', inputs.openai_api_base);
     }
   };
 
@@ -312,6 +330,74 @@ const SystemSetting = () => {
           </Form.Group>
           <Form.Button onClick={submitGitHubOAuth}>
             保存 GitHub OAuth 设置
+          </Form.Button>
+          <Divider />
+          <Header as='h3'>
+            配置 AI API
+            <Header.Subheader>
+              用以支持AI提示生成功能，
+              <a
+                href='https://dashscope.console.aliyun.com/apiKey'
+                target='_blank'
+                rel='noreferrer'
+              >
+                点击此处
+              </a>
+              获取阿里云通义千问API密钥
+            </Header.Subheader>
+          </Header>
+          <Form.Group widths={3}>
+            <Form.Input
+              label='API 密钥'
+              name='openai_api_key'
+              onChange={handleInputChange}
+              type='password'
+              autoComplete='new-password'
+              value={inputs.openai_api_key}
+              placeholder='敏感信息不会发送到前端显示'
+            />
+            <Form.Input
+              label='默认模型'
+              name='openai_default_model'
+              onChange={handleInputChange}
+              autoComplete='new-password'
+              value={inputs.openai_default_model}
+              placeholder='qwen-turbo'
+            />
+            <Form.Input
+              label='API 基础URL'
+              name='openai_api_base'
+              onChange={handleInputChange}
+              autoComplete='new-password'
+              value={inputs.openai_api_base}
+              placeholder='例如：https://dashscope.aliyuncs.com'
+            />
+          </Form.Group>
+          <Message>
+            <Message.Header>关于通义千问 API</Message.Header>
+            <Message.Content>
+              <p>
+                通义千问API密钥可以在
+                <a
+                  href='https://dashscope.console.aliyun.com/apiKey'
+                  target='_blank'
+                  rel='noreferrer'
+                >
+                  {' '}
+                  阿里云灵积平台{' '}
+                </a>
+                获取。只有设置了有效的API密钥，AI提示功能才能正常使用。
+              </p>
+              <p>
+                默认模型通常为 qwen-turbo，您也可以使用 qwen-plus、qwen-max 等其他模型。
+              </p>
+              <p>
+                API基础URL默认为 https://dashscope.aliyuncs.com，如果您使用的是其他服务提供商，可以在此处修改。
+              </p>
+            </Message.Content>
+          </Message>
+          <Form.Button onClick={submitOpenAI}>
+            保存 AI API 设置
           </Form.Button>
           <Divider />
           <Header as='h3'>

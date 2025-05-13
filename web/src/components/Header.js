@@ -21,6 +21,11 @@ const headerButtons = [
     icon: 'home',
   },
   {
+    name: 'AI提示',
+    to: '/ai/prompt',
+    icon: 'magic',
+  },
+  {
     name: '文件',
     to: '/file',
     icon: 'file',

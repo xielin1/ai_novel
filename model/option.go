@@ -49,11 +49,25 @@ func InitOptionMap() {
 	common.OptionMap["WeChatAccountQRCodeImageURL"] = ""
 	common.OptionMap["TurnstileSiteKey"] = ""
 	common.OptionMap["TurnstileSecretKey"] = ""
+	// OpenAI相关设置
+	common.OptionMap["openai_api_key"] = ""
+	common.OptionMap["openai_default_model"] = "gpt-3.5-turbo"
+	common.OptionMap["openai_api_base"] = "https://api.openai.com"
 	common.OptionMapRWMutex.Unlock()
 	options, _ := AllOption()
 	for _, option := range options {
 		updateOptionMap(option.Key, option.Value)
 	}
+}
+
+// GetSetting 获取系统设置
+func GetSetting(key string) string {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if value, ok := common.OptionMap[key]; ok {
+		return value
+	}
+	return ""
 }
 
 func UpdateOption(key string, value string) error {

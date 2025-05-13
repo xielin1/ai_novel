@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 项目结构指南
+
+本项目是一个基于Gin和React的Web应用模板。
+
+## 主要组件
+
+- 主入口：[main.go](mdc:main.go) - 应用程序的入口点，初始化各个组件
+- 模型层：[model](mdc:model) - 定义数据库模型和交互
+- 控制器：[controller](mdc:controller) - 处理请求逻辑
+- 路由：[router](mdc:router) - 设置API和Web路由
+- 中间件：[middleware](mdc:middleware) - 包含各种中间件如认证、CORS等
+- 公共组件：[common](mdc:common) - 包含工具函数、常量和初始化代码
+- 前端代码：[web](mdc:web) - React前端应用

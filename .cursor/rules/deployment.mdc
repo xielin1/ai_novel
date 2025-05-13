@@ -1,0 +1,25 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 部署指南
+
+本项目支持多种部署方式，包括Docker和手动部署。
+
+## 相关文件
+
+- [Dockerfile](mdc:Dockerfile) - Docker镜像构建配置
+- [go.mod](mdc:go.mod) - Go模块依赖配置
+- [README.md](mdc:README.md) - 包含详细的部署说明
+- [web/package.json](mdc:web/package.json) - 前端依赖和构建脚本
+
+## 主要配置项
+
+应用可通过环境变量或命令行参数进行配置：
+
+- 端口设置：`--port 3000`或环境变量`PORT`
+- Redis连接：环境变量`REDIS_CONN_STRING`
+- 数据库配置：环境变量`SQL_DSN`
+- 会话密钥：环境变量`SESSION_SECRET`
+- 日志目录：`--log-dir ./logs`
