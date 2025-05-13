@@ -21,6 +21,12 @@ const headerButtons = [
     icon: 'home',
   },
   {
+    name: '我的项目',
+    to: '/dashboard',
+    icon: 'book',
+    requireLogin: true,
+  },
+  {
     name: 'AI提示',
     to: '/ai/prompt',
     icon: 'magic',
@@ -72,9 +78,12 @@ const Header = () => {
   const renderButtons = (isMobile) => {
     return headerButtons.map((button) => {
       if (button.admin && !isAdmin()) return <></>;
+      if (button.requireLogin && !userState.user) return <></>;
+      
       if (isMobile) {
         return (
           <Menu.Item
+            key={button.name}
             onClick={() => {
               navigate(button.to);
               setShowSidebar(false);

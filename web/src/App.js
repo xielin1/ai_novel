@@ -27,10 +27,19 @@ import './App.css';
 const Home = lazy(() => import('./pages/Home'));
 const About = lazy(() => import('./pages/About'));
 
-// 自定义私有路由组件，用于新添加的页面
-const CustomPrivateRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('token') !== null;
-  return isAuthenticated ? children : <Navigate to="/login" />;
+// 根路径组件，根据登录状态选择显示Home或重定向到Dashboard
+const RootComponent = () => {
+  const [userState] = useContext(UserContext);
+  
+  if (userState.user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return (
+    <Suspense fallback={<Loading></Loading>}>
+      <Home />
+    </Suspense>
+  );
 };
 
 function App() {
@@ -90,15 +99,9 @@ function App() {
   return (
     <ConfigProvider locale={zhCN}>
       <Routes>
-        {/* 原有路由配置 */}
-        <Route
-          path='/'
-          element={
-            <Suspense fallback={<Loading></Loading>}>
-              <Home />
-            </Suspense>
-          }
-        />
+        {/* 根路径 - 根据登录状态决定显示内容 */}
+        <Route path='/' element={<RootComponent />} />
+
         <Route
           path='/file'
           element={
