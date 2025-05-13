@@ -29,7 +29,26 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			aiRoute.POST("/prompt", controller.AIPrompt)       // 提交提示并获取响应
 			aiRoute.GET("/models", controller.GetAIModels)     // 获取可用模型列表
+			aiRoute.POST("/generate/:id", controller.AIGenerate) // AI续写
 		}
+
+		// 项目管理API路由
+		projectRoute := apiRouter.Group("/projects")
+		projectRoute.Use(middleware.UserAuth()) // 需要登录才能使用
+		{
+			projectRoute.GET("", controller.GetProjects)           // 获取项目列表
+			projectRoute.POST("", controller.CreateProject)        // 创建新项目
+			projectRoute.GET("/:id", controller.GetProject)        // 获取项目详情
+			projectRoute.PUT("/:id", controller.UpdateProject)     // 更新项目信息
+			projectRoute.DELETE("/:id", controller.DeleteProject)  // 删除项目
+		}
+		
+		// 大纲管理API路由
+		apiRouter.GET("/outlines/:id", middleware.UserAuth(), controller.GetOutline)         // 获取大纲内容
+		apiRouter.POST("/outlines/:id", middleware.UserAuth(), controller.SaveOutline)       // 保存大纲内容
+		apiRouter.GET("/versions/:id", middleware.UserAuth(), controller.GetVersions)        // 获取版本历史
+		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件
+		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)      // 导出大纲
 
 		userRoute := apiRouter.Group("/user")
 		{

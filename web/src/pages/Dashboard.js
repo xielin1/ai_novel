@@ -1,26 +1,34 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  Layout, Menu, Button, Table, Space, Card, 
-  Typography, Modal, Form, Input, message, Empty 
-} from 'antd';
-import { 
-  PlusOutlined, EditOutlined, DeleteOutlined, 
-  FileTextOutlined, UserOutlined, LogoutOutlined 
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import {
+  Button,
+  Container,
+  Divider,
+  Grid,
+  Header,
+  Icon,
+  Menu,
+  Modal,
+  Form,
+  Table,
+  Segment,
+  Message,
+  Dimmer,
+  Loader
+} from 'semantic-ui-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess } from '../helpers';
 import { UserContext } from '../context/User';
-import '../styles/Dashboard.css';
-
-const { Header, Content, Sider } = Layout;
-const { Title } = Typography;
 
 const Dashboard = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('创建新项目');
-  const [form] = Form.useForm();
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: ''
+  });
   const [editingId, setEditingId] = useState(null);
   const [userData, setUserData] = useState({});
   const navigate = useNavigate();
@@ -59,23 +67,39 @@ const Dashboard = () => {
     fetchProjects();
   }, []);
 
+  // 处理输入变化
+  const handleInputChange = (e, { name, value }) => {
+    setFormData({ ...formData, [name]: value });
+  };
+
   // 处理创建/编辑项目
-  const handleCreateOrUpdateProject = async (values) => {
+  const handleSubmit = async () => {
+    if (!formData.title) {
+      showError('项目名称不能为空');
+      return;
+    }
+
     try {
       let res;
       if (editingId) {
         // 更新项目
-        res = await API.put(`/api/projects/${editingId}`, values);
+        res = await API.put(`/api/projects/${editingId}`, formData);
       } else {
         // 创建项目
-        res = await API.post('/api/projects', values);
+        res = await API.post('/api/projects', formData);
       }
 
       const { success, message, data } = res.data;
       if (success) {
         showSuccess(editingId ? '项目更新成功' : '项目创建成功');
-        setModalVisible(false);
+        setModalOpen(false);
         fetchProjects();
+        // 重置表单
+        setFormData({
+          title: '',
+          description: '',
+          genre: ''
+        });
       } else {
         showError(message || '操作失败');
       }
@@ -87,27 +111,21 @@ const Dashboard = () => {
 
   // 删除项目
   const handleDeleteProject = async (id) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这个项目吗？此操作不可撤销。',
-      okText: '确认',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          const res = await API.delete(`/api/projects/${id}`);
-          const { success, message } = res.data;
-          if (success) {
-            showSuccess('项目删除成功');
-            fetchProjects();
-          } else {
-            showError(message || '删除失败');
-          }
-        } catch (error) {
-          console.error('删除失败', error);
-          showError(error.message || '删除失败，请稍后重试');
+    if (window.confirm('确定要删除这个项目吗？此操作不可撤销。')) {
+      try {
+        const res = await API.delete(`/api/projects/${id}`);
+        const { success, message } = res.data;
+        if (success) {
+          showSuccess('项目删除成功');
+          fetchProjects();
+        } else {
+          showError(message || '删除失败');
         }
+      } catch (error) {
+        console.error('删除失败', error);
+        showError(error.message || '删除失败，请稍后重试');
       }
-    });
+    }
   };
 
   // 打开项目
@@ -119,20 +137,24 @@ const Dashboard = () => {
   const showCreateModal = () => {
     setModalTitle('创建新项目');
     setEditingId(null);
-    form.resetFields();
-    setModalVisible(true);
+    setFormData({
+      title: '',
+      description: '',
+      genre: ''
+    });
+    setModalOpen(true);
   };
 
   // 显示编辑项目模态框
   const showEditModal = (project) => {
     setModalTitle('编辑项目');
     setEditingId(project.id);
-    form.setFieldsValue({
+    setFormData({
       title: project.title,
-      description: project.description,
-      genre: project.genre,
+      description: project.description || '',
+      genre: project.genre || ''
     });
-    setModalVisible(true);
+    setModalOpen(true);
   };
 
   // 退出登录
@@ -143,181 +165,155 @@ const Dashboard = () => {
     showSuccess('退出登录成功');
   };
 
-  // 表格列定义
-  const columns = [
-    {
-      title: '项目名称',
-      dataIndex: 'title',
-      key: 'title',
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-    },
-    {
-      title: '类型',
-      dataIndex: 'genre',
-      key: 'genre',
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (text) => new Date(text).toLocaleString(),
-    },
-    {
-      title: '上次编辑',
-      dataIndex: 'last_edited_at',
-      key: 'last_edited_at',
-      render: (text) => text ? new Date(text).toLocaleString() : '未编辑',
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="primary"
-            icon={<FileTextOutlined />}
-            onClick={() => handleOpenProject(record.id)}
-          >
-            打开
-          </Button>
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => showEditModal(record)}
-          >
-            编辑
-          </Button>
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteProject(record.id)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header className="dashboard-header">
-        <div className="logo">网文大纲续写助手</div>
-        <div className="user-info">
-          <Space>
-            <UserOutlined />
-            <span>{userData.username || '用户'}</span>
-            <Button type="link" icon={<LogoutOutlined />} onClick={handleLogout}>
-              退出登录
-            </Button>
-          </Space>
-        </div>
-      </Header>
-      <Layout>
-        <Sider width={200} className="dashboard-sider">
-          <Menu
-            mode="inline"
-            defaultSelectedKeys={['projects']}
-            style={{ height: '100%', borderRight: 0 }}
-          >
-            <Menu.Item key="projects" icon={<FileTextOutlined />}>
-              我的项目
-            </Menu.Item>
-            <Menu.Item key="account" icon={<UserOutlined />}>
-              账户信息
-            </Menu.Item>
-          </Menu>
-        </Sider>
-        <Layout className="dashboard-content-layout">
-          <Content className="dashboard-content">
-            <div className="dashboard-header-actions">
-              <Title level={4}>我的项目</Title>
+    <Container fluid style={{ padding: '2em' }}>
+      <Grid>
+        <Grid.Row>
+          <Grid.Column width={16}>
+            <Segment clearing>
+              <Header as='h2' floated='left'>
+                网文大纲续写助手
+              </Header>
               <Button 
-                type="primary" 
-                icon={<PlusOutlined />} 
+                floated='right' 
+                onClick={handleLogout}
+                color='red'
+              >
+                <Icon name='sign-out' /> 退出登录
+              </Button>
+              <span style={{ marginRight: '1em', float: 'right', lineHeight: '36px' }}>
+                <Icon name='user' /> {userData.username || '用户'}
+              </span>
+            </Segment>
+          </Grid.Column>
+        </Grid.Row>
+
+        <Grid.Row>
+          <Grid.Column width={3}>
+            <Menu vertical fluid>
+              <Menu.Item active>
+                <Icon name='file alternate' /> 我的项目
+              </Menu.Item>
+              <Menu.Item>
+                <Icon name='user' /> 账户信息
+              </Menu.Item>
+            </Menu>
+          </Grid.Column>
+          
+          <Grid.Column width={13}>
+            <Segment>
+              <Header as='h3' floated='left'>我的项目</Header>
+              <Button 
+                primary 
+                floated='right'
+                icon 
+                labelPosition='left'
                 onClick={showCreateModal}
               >
+                <Icon name='plus' />
                 创建新项目
               </Button>
-            </div>
-            
-            <Card className="project-list-card">
-              {projects.length > 0 ? (
-                <Table
-                  dataSource={projects}
-                  columns={columns}
-                  rowKey="id"
-                  loading={loading}
-                  pagination={{ pageSize: 10 }}
-                />
+              <Divider clearing />
+              
+              {loading ? (
+                <Dimmer active inverted>
+                  <Loader>加载中...</Loader>
+                </Dimmer>
+              ) : projects.length > 0 ? (
+                <Table celled>
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.HeaderCell>项目名称</Table.HeaderCell>
+                      <Table.HeaderCell>描述</Table.HeaderCell>
+                      <Table.HeaderCell>类型</Table.HeaderCell>
+                      <Table.HeaderCell>创建时间</Table.HeaderCell>
+                      <Table.HeaderCell>上次编辑</Table.HeaderCell>
+                      <Table.HeaderCell>操作</Table.HeaderCell>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {projects.map(project => (
+                      <Table.Row key={project.id}>
+                        <Table.Cell>{project.title}</Table.Cell>
+                        <Table.Cell>{project.description}</Table.Cell>
+                        <Table.Cell>{project.genre}</Table.Cell>
+                        <Table.Cell>
+                          {new Date(project.created_at).toLocaleString()}
+                        </Table.Cell>
+                        <Table.Cell>
+                          {project.last_edited_at ? new Date(project.last_edited_at).toLocaleString() : '未编辑'}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Button.Group>
+                            <Button primary onClick={() => handleOpenProject(project.id)}>
+                              <Icon name='file text' /> 打开
+                            </Button>
+                            <Button onClick={() => showEditModal(project)}>
+                              <Icon name='edit' /> 编辑
+                            </Button>
+                            <Button negative onClick={() => handleDeleteProject(project.id)}>
+                              <Icon name='trash' /> 删除
+                            </Button>
+                          </Button.Group>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table>
               ) : (
-                <Empty
-                  description="暂无项目"
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                >
-                  <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />} 
-                    onClick={showCreateModal}
-                  >
-                    创建新项目
-                  </Button>
-                </Empty>
+                <Message info>
+                  <Message.Header>暂无项目</Message.Header>
+                  <p>点击"创建新项目"按钮开始吧！</p>
+                </Message>
               )}
-            </Card>
-          </Content>
-        </Layout>
-      </Layout>
+            </Segment>
+          </Grid.Column>
+        </Grid.Row>
+      </Grid>
 
       {/* 创建/编辑项目模态框 */}
       <Modal
-        title={modalTitle}
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        footer={null}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleCreateOrUpdateProject}
-        >
-          <Form.Item
-            name="title"
-            label="项目名称"
-            rules={[{ required: true, message: '请输入项目名称' }]}
-          >
-            <Input placeholder="请输入项目名称" />
-          </Form.Item>
-          
-          <Form.Item
-            name="description"
-            label="项目描述"
-          >
-            <Input.TextArea placeholder="请输入项目描述" rows={4} />
-          </Form.Item>
-          
-          <Form.Item
-            name="genre"
-            label="作品类型"
-          >
-            <Input placeholder="如：玄幻、科幻、都市等" />
-          </Form.Item>
-          
-          <Form.Item>
-            <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>
-              {editingId ? '保存修改' : '创建项目'}
-            </Button>
-            <Button onClick={() => setModalVisible(false)}>
-              取消
-            </Button>
-          </Form.Item>
-        </Form>
+        <Modal.Header>{modalTitle}</Modal.Header>
+        <Modal.Content>
+          <Form>
+            <Form.Input
+              label='项目名称'
+              name='title'
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder='请输入项目名称'
+              required
+            />
+            <Form.TextArea
+              label='项目描述'
+              name='description'
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder='请输入项目描述'
+              rows={4}
+            />
+            <Form.Input
+              label='作品类型'
+              name='genre'
+              value={formData.genre}
+              onChange={handleInputChange}
+              placeholder='如：玄幻、科幻、都市等'
+            />
+          </Form>
+        </Modal.Content>
+        <Modal.Actions>
+          <Button onClick={() => setModalOpen(false)}>
+            取消
+          </Button>
+          <Button primary onClick={handleSubmit}>
+            {editingId ? '保存修改' : '创建项目'}
+          </Button>
+        </Modal.Actions>
       </Modal>
-    </Layout>
+    </Container>
   );
 };
 

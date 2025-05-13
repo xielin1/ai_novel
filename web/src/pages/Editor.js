@@ -1,31 +1,35 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  Layout, Button, Card, Typography, Tabs, Form, Input, 
-  Select, InputNumber, Divider, Upload, Spin,
-  Space, Tooltip, Modal
-} from 'antd';
-import { 
-  LeftOutlined, SaveOutlined, FileAddOutlined,
-  UploadOutlined, DownloadOutlined, HistoryOutlined,
-  RollbackOutlined, SendOutlined
-} from '@ant-design/icons';
+import {
+  Button,
+  Container,
+  Divider,
+  Grid,
+  Header,
+  Icon,
+  Menu,
+  Modal,
+  Form,
+  TextArea,
+  Segment,
+  Message,
+  Dimmer,
+  Loader,
+  Dropdown,
+  Input,
+  Tab,
+  Card
+} from 'semantic-ui-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess } from '../helpers';
 import { UserContext } from '../context/User';
 import '../styles/Editor.css';
-
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
-const { TabPane } = Tabs;
-const { TextArea } = Input;
-const { Option } = Select;
 
 const Editor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [userState] = useContext(UserContext);
   
-  const [project, setProject] = useState({});
+  const [project, setProject] = useState(null);
   const [outline, setOutline] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -37,6 +41,9 @@ const Editor = () => {
   const [versions, setVersions] = useState([]);
   const [selectedVersion, setSelectedVersion] = useState(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // 获取项目和大纲信息
   const fetchProjectAndOutline = async () => {
@@ -77,7 +84,13 @@ const Editor = () => {
   };
 
   useEffect(() => {
-    fetchProjectAndOutline();
+    if (id) {
+      fetchProjectAndOutline();
+    } else {
+      setLoading(false);
+      showError('项目ID无效');
+      navigate('/dashboard');
+    }
   }, [id]);
 
   // 返回仪表盘
@@ -87,18 +100,34 @@ const Editor = () => {
 
   // 保存大纲
   const handleSaveOutline = async () => {
+    if (!outline.trim()) {
+      showError('大纲内容不能为空');
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await API.post(`/api/outlines/${id}`, { content: outline });
       const { success, message } = res.data;
       if (success) {
         showSuccess('大纲保存成功');
         fetchProjectAndOutline(); // 刷新版本历史
+        
+        // 更新项目最后编辑时间
+        if (project) {
+          setProject({
+            ...project,
+            last_edited_at: new Date().toISOString()
+          });
+        }
       } else {
         showError(message || '保存失败');
       }
     } catch (error) {
       console.error('保存失败', error);
       showError(error.message || '保存失败，请稍后重试');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -147,23 +176,38 @@ const Editor = () => {
     showSuccess('已采用AI续写内容');
   };
 
+  // 处理文件选择
+  const handleFileChange = (e) => {
+    setUploadFile(e.target.files[0]);
+  };
+
   // 上传大纲文件
-  const handleFileUpload = async (info) => {
-    if (info.file.status === 'done') {
-      try {
-        const res = info.file.response;
-        if (res.success) {
-          setOutline(res.data.content);
-          showSuccess('文件上传成功');
-        } else {
-          showError(res.message || '上传失败');
+  const handleFileUpload = async () => {
+    if (!uploadFile) {
+      showError('请先选择文件');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+
+    try {
+      const res = await API.post(`/api/upload/outline/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
-      } catch (error) {
-        console.error('处理上传失败', error);
-        showError(error.message || '处理上传失败');
+      });
+      
+      const { success, message, data } = res.data;
+      if (success) {
+        setOutline(data.content);
+        showSuccess('文件上传成功');
+      } else {
+        showError(message || '上传失败');
       }
-    } else if (info.file.status === 'error') {
-      showError('文件上传失败');
+    } catch (error) {
+      console.error('处理上传失败', error);
+      showError(error.message || '处理上传失败');
     }
   };
 
@@ -205,212 +249,273 @@ const Editor = () => {
     }
   };
 
-  // 文件上传组件的配置
-  const uploadProps = {
-    name: 'file',
-    action: `/api/upload/outline/${id}`,
-    headers: {
-      Authorization: userState.user ? `Bearer ${userState.user.token}` : ''
+  const styleOptions = [
+    { key: 'default', text: '默认', value: 'default' },
+    { key: 'fantasy', text: '玄幻奇幻', value: 'fantasy' },
+    { key: 'scifi', text: '科幻', value: 'scifi' },
+    { key: 'urban', text: '都市', value: 'urban' },
+    { key: 'xianxia', text: '仙侠修真', value: 'xianxia' },
+    { key: 'history', text: '历史军事', value: 'history' }
+  ];
+
+  const panes = [
+    {
+      menuItem: '生成设置',
+      render: () => (
+        <Tab.Pane>
+          <Form>
+            <Form.Field>
+              <label>续写风格</label>
+              <Dropdown
+                fluid
+                selection
+                options={styleOptions}
+                value={aiSettings.style}
+                onChange={(e, { value }) => setAiSettings({...aiSettings, style: value})}
+              />
+            </Form.Field>
+            
+            <Form.Field>
+              <label>字数限制</label>
+              <Input
+                type="number"
+                min={100}
+                max={5000}
+                value={aiSettings.wordLimit}
+                onChange={(e, { value }) => setAiSettings({...aiSettings, wordLimit: parseInt(value)})}
+                fluid
+              />
+            </Form.Field>
+            
+            <Button
+              primary
+              fluid
+              onClick={handleGenerateContent}
+              loading={generating}
+              disabled={generating}
+            >
+              <Icon name='send' /> 开始续写
+            </Button>
+          </Form>
+        </Tab.Pane>
+      )
     },
-    onChange: handleFileUpload,
-    accept: '.txt,.docx'
-  };
+    {
+      menuItem: '续写结果',
+      render: () => (
+        <Tab.Pane>
+          {generating ? (
+            <div className="generating-indicator">
+              <Loader active inline="centered" />
+              <p style={{ marginTop: 16, textAlign: 'center' }}>AI正在续写中，请稍候...</p>
+            </div>
+          ) : generatedContent ? (
+            <div className="generated-content">
+              <Form>
+                <TextArea
+                  value={generatedContent}
+                  readOnly
+                  style={{ minHeight: 250 }}
+                />
+              </Form>
+              <Divider />
+              <Button
+                primary
+                fluid
+                onClick={handleAdoptGenerated}
+              >
+                <Icon name='plus' /> 采用此内容
+              </Button>
+            </div>
+          ) : (
+            <Message info>
+              <Message.Header>尚未生成续写内容</Message.Header>
+              <p>请在"生成设置"选项卡中设置参数并点击"开始续写"</p>
+            </Message>
+          )}
+        </Tab.Pane>
+      )
+    }
+  ];
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <Spin size="large" />
-        <Text style={{ marginTop: 16 }}>加载中...</Text>
-      </div>
+      <Dimmer active>
+        <Loader size="large">加载中...</Loader>
+      </Dimmer>
     );
   }
 
   return (
-    <Layout className="editor-layout">
-      <Header className="editor-header">
-        <div className="header-left">
-          <Button 
-            type="link" 
-            icon={<LeftOutlined />} 
-            onClick={handleBackToDashboard}
-          >
-            返回
-          </Button>
-          <Title level={4} style={{ margin: 0 }}>
-            {project.title || '未命名项目'}
-          </Title>
-        </div>
-        <div className="header-right">
-          <Space>
-            <Upload {...uploadProps}>
-              <Tooltip title="上传大纲文件">
-                <Button icon={<UploadOutlined />}>上传</Button>
-              </Tooltip>
-            </Upload>
-            <Tooltip title="导出大纲">
-              <Button icon={<DownloadOutlined />} onClick={handleExportOutline}>
-                导出
-              </Button>
-            </Tooltip>
-            <Tooltip title="查看历史版本">
-              <Button icon={<HistoryOutlined />} onClick={handleViewVersionHistory}>
-                历史
-              </Button>
-            </Tooltip>
-            <Tooltip title="保存大纲">
-              <Button 
-                type="primary" 
-                icon={<SaveOutlined />} 
-                onClick={handleSaveOutline}
-              >
-                保存
-              </Button>
-            </Tooltip>
-          </Space>
-        </div>
-      </Header>
-      
-      <Content className="editor-content">
-        <div className="editor-container">
-          <Card className="outline-editor-card" title="大纲编辑">
-            <TextArea
-              className="outline-editor"
-              value={outline}
-              onChange={(e) => setOutline(e.target.value)}
-              placeholder="在此输入或上传您的网文大纲..."
-              autoSize={{ minRows: 20, maxRows: 30 }}
-            />
-          </Card>
-          
-          <Card className="ai-output-card" title="AI续写">
-            <Tabs defaultActiveKey="generate">
-              <TabPane tab="生成设置" key="generate">
-                <Form layout="vertical">
-                  <Form.Item label="续写风格">
-                    <Select
-                      value={aiSettings.style}
-                      onChange={(value) => setAiSettings({...aiSettings, style: value})}
-                    >
-                      <Option value="default">默认</Option>
-                      <Option value="fantasy">玄幻奇幻</Option>
-                      <Option value="scifi">科幻</Option>
-                      <Option value="urban">都市</Option>
-                      <Option value="xianxia">仙侠修真</Option>
-                      <Option value="history">历史军事</Option>
-                    </Select>
-                  </Form.Item>
-                  
-                  <Form.Item label="字数限制">
-                    <InputNumber
-                      min={100}
-                      max={5000}
-                      value={aiSettings.wordLimit}
-                      onChange={(value) => setAiSettings({...aiSettings, wordLimit: value})}
-                      style={{ width: '100%' }}
-                    />
-                  </Form.Item>
-                  
-                  <Form.Item>
-                    <Button
-                      type="primary"
-                      icon={<SendOutlined />}
-                      onClick={handleGenerateContent}
-                      loading={generating}
-                      block
-                    >
-                      开始续写
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </TabPane>
-              
-              <TabPane tab="续写结果" key="result">
-                {generating ? (
-                  <div className="generating-indicator">
-                    <Spin />
-                    <Text style={{ marginTop: 16 }}>AI正在续写中，请稍候...</Text>
-                  </div>
-                ) : generatedContent ? (
-                  <div className="generated-content">
-                    <TextArea
-                      value={generatedContent}
-                      readOnly
-                      autoSize={{ minRows: 15, maxRows: 20 }}
-                    />
-                    <Divider />
-                    <Button
-                      type="primary"
-                      icon={<FileAddOutlined />}
-                      onClick={handleAdoptGenerated}
-                      block
-                    >
-                      采用此内容
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="no-result">
-                    <Text type="secondary">
-                      尚未生成续写内容，请在"生成设置"选项卡中设置参数并点击"开始续写"
-                    </Text>
-                  </div>
-                )}
-              </TabPane>
-            </Tabs>
-          </Card>
-        </div>
-      </Content>
-      
-      {/* 历史版本弹窗 */}
-      <Modal
-        title="历史版本"
-        visible={showVersionHistory}
-        onCancel={() => setShowVersionHistory(false)}
-        footer={null}
-        width={700}
-      >
-        {versions.length > 0 ? (
-          <div className="version-list">
-            {versions.map((version) => (
-              <Card 
-                key={version.id} 
-                className="version-item"
-                hoverable
-                onClick={() => handleSelectVersion(version)}
-              >
-                <div className="version-header">
-                  <div>
-                    <Text strong>版本 {version.version_number}</Text>
-                    {version.is_ai_generated && (
-                      <Text type="secondary" style={{ marginLeft: 8 }}>
-                        (AI生成)
-                      </Text>
-                    )}
-                  </div>
-                  <Text type="secondary">
-                    {new Date(version.created_at).toLocaleString()}
-                  </Text>
-                </div>
-                <div className="version-preview">
-                  {version.content.substring(0, 100)}
-                  {version.content.length > 100 ? '...' : ''}
-                </div>
+    <Container fluid style={{ padding: '2em' }}>
+      <Grid>
+        <Grid.Row>
+          <Grid.Column width={16}>
+            <Segment clearing>
+              <Header as='h2' floated='left'>
                 <Button 
-                  type="text" 
-                  icon={<RollbackOutlined />} 
-                  size="small"
+                  icon 
+                  labelPosition='left'
+                  onClick={handleBackToDashboard}
                 >
-                  恢复此版本
+                  <Icon name='arrow left' />
+                  返回
                 </Button>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="no-versions">
-            <Text type="secondary">暂无历史版本</Text>
-          </div>
-        )}
+                {project ? project.title : '编辑项目'}
+              </Header>
+              <Button.Group floated='right'>
+                <Button onClick={() => document.getElementById('fileInput').click()}>
+                  <Icon name='upload' /> 上传
+                </Button>
+                <input
+                  id="fileInput"
+                  type="file"
+                  accept=".txt,.docx"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                {uploadFile && (
+                  <Button positive onClick={handleFileUpload}>
+                    <Icon name='check' /> 确认上传
+                  </Button>
+                )}
+                <Button onClick={handleExportOutline}>
+                  <Icon name='download' /> 导出
+                </Button>
+                <Button onClick={handleViewVersionHistory}>
+                  <Icon name='history' /> 历史
+                </Button>
+                <Button primary onClick={handleSaveOutline}>
+                  <Icon name='save' /> 保存
+                </Button>
+              </Button.Group>
+            </Segment>
+          </Grid.Column>
+        </Grid.Row>
+
+        <Grid.Row>
+          <Grid.Column width={10}>
+            <Segment>
+              <Header as='h3'>大纲编辑</Header>
+              <Form>
+                <TextArea
+                  placeholder="在此输入或上传您的网文大纲..."
+                  value={outline}
+                  onChange={(e, { value }) => setOutline(value)}
+                  style={{ minHeight: 500 }}
+                />
+              </Form>
+            </Segment>
+          </Grid.Column>
+          
+          <Grid.Column width={6}>
+            <Segment>
+              <Header as='h3'>AI续写</Header>
+              <Tab panes={panes} />
+            </Segment>
+          </Grid.Column>
+        </Grid.Row>
+      </Grid>
+
+      {/* 历史版本弹窗 */}
+      <Modal open={showVersionHistory} onClose={() => setShowVersionHistory(false)} size="large">
+        <Modal.Header>历史版本</Modal.Header>
+        <Modal.Content scrolling>
+          {versions.length > 0 ? (
+            <Card.Group>
+              {versions.map((version) => (
+                <Card fluid key={version.id} onClick={() => handleSelectVersion(version)}>
+                  <Card.Content>
+                    <Card.Header>
+                      版本 {version.version_number}
+                      {version.is_ai_generated && (
+                        <span style={{ marginLeft: '1em', fontSize: '0.8em', color: 'grey' }}>
+                          (AI生成)
+                        </span>
+                      )}
+                    </Card.Header>
+                    <Card.Meta>
+                      {new Date(version.created_at).toLocaleString()}
+                    </Card.Meta>
+                    <Card.Description>
+                      {version.content.substring(0, 100)}
+                      {version.content.length > 100 ? '...' : ''}
+                    </Card.Description>
+                  </Card.Content>
+                  <Card.Content extra>
+                    <Button basic color="blue" size="small">
+                      <Icon name='undo' /> 恢复此版本
+                    </Button>
+                  </Card.Content>
+                </Card>
+              ))}
+            </Card.Group>
+          ) : (
+            <Message info>
+              <Message.Header>暂无历史版本</Message.Header>
+              <p>保存大纲后将在此显示历史版本</p>
+            </Message>
+          )}
+        </Modal.Content>
+        <Modal.Actions>
+          <Button onClick={() => setShowVersionHistory(false)}>
+            关闭
+          </Button>
+        </Modal.Actions>
       </Modal>
-    </Layout>
+
+      {/* AI续写模态框 */}
+      <Modal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+      >
+        <Modal.Header>AI续写设置</Modal.Header>
+        <Modal.Content>
+          <Form>
+            <Form.Select
+              label='续写风格'
+              name='style'
+              options={[
+                { key: 'default', text: '默认', value: 'default' },
+                { key: 'fantasy', text: '玄幻', value: 'fantasy' },
+                { key: 'scifi', text: '科幻', value: 'scifi' },
+                { key: 'urban', text: '都市', value: 'urban' },
+                { key: 'xianxia', text: '仙侠', value: 'xianxia' },
+                { key: 'history', text: '历史', value: 'history' }
+              ]}
+              value={aiSettings.style}
+              onChange={(e, { value }) => setAiSettings({ ...aiSettings, style: value })}
+            />
+            <Form.Input
+              label='生成字数'
+              name='wordLimit'
+              type='number'
+              value={aiSettings.wordLimit}
+              onChange={(e, { value }) => setAiSettings({ ...aiSettings, wordLimit: value })}
+              min='100'
+              max='5000'
+            />
+            <Message>
+              <Message.Header>提示</Message.Header>
+              <p>AI续写将基于您当前的大纲内容生成后续文字，生成的内容将追加到现有内容之后。</p>
+            </Message>
+          </Form>
+        </Modal.Content>
+        <Modal.Actions>
+          <Button onClick={() => setAiModalOpen(false)}>
+            取消
+          </Button>
+          <Button 
+            primary 
+            onClick={handleGenerateContent}
+            loading={generating}
+            disabled={generating}
+          >
+            开始生成
+          </Button>
+        </Modal.Actions>
+      </Modal>
+    </Container>
   );
 };
 
