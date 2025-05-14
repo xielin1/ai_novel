@@ -50,6 +50,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件
 		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)      // 导出大纲
 
+		//user
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
@@ -77,12 +78,14 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.DELETE("/:id", controller.DeleteUser)
 			}
 		}
+		//option
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth(), middleware.NoTokenAuth())
 		{
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.PUT("/", controller.UpdateOption)
 		}
+		//file
 		fileRoute := apiRouter.Group("/file")
 		fileRoute.Use(middleware.AdminAuth())
 		{
