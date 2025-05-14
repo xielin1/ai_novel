@@ -19,7 +19,6 @@ import { UserContext } from './context/User';
 import { StatusContext } from './context/Status';
 import File from './pages/File';
 import AIPrompt from './pages/AIPrompt';
-// 导入新添加的页面组件，移除Login组件
 import Dashboard from './pages/Dashboard';
 import Editor from './pages/Editor';
 import './App.css';
