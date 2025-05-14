@@ -121,7 +121,6 @@ func Register(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, nil)
-	return
 }
 
 func GetAllUsers(c *gin.Context) {
@@ -135,7 +134,6 @@ func GetAllUsers(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, users)
-	return
 }
 
 func SearchUsers(c *gin.Context) {
@@ -146,7 +144,6 @@ func SearchUsers(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, users)
-	return
 }
 
 func GetUser(c *gin.Context) {
@@ -166,7 +163,6 @@ func GetUser(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, user)
-	return
 }
 
 func GenerateToken(c *gin.Context) {
@@ -190,7 +186,6 @@ func GenerateToken(c *gin.Context) {
 	}
 
 	ResponseOK(c, user.Token)
-	return
 }
 
 func GetSelf(c *gin.Context) {
@@ -201,7 +196,6 @@ func GetSelf(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, user)
-	return
 }
 
 func UpdateUser(c *gin.Context) {
@@ -241,7 +235,6 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, nil)
-	return
 }
 
 func UpdateSelf(c *gin.Context) {
@@ -276,7 +269,6 @@ func UpdateSelf(c *gin.Context) {
 	}
 
 	ResponseOK(c, nil)
-	return
 }
 
 func DeleteUser(c *gin.Context) {
@@ -301,7 +293,6 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, nil)
-	return
 }
 
 func DeleteSelf(c *gin.Context) {
@@ -312,7 +303,6 @@ func DeleteSelf(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, nil)
-	return
 }
 
 func CreateUser(c *gin.Context) {
@@ -342,7 +332,6 @@ func CreateUser(c *gin.Context) {
 	}
 
 	ResponseOK(c, nil)
-	return
 }
 
 type ManageRequest struct {
@@ -422,7 +411,6 @@ func ManageUser(c *gin.Context) {
 		Status: user.Status,
 	}
 	ResponseOK(c, clearUser)
-	return
 }
 
 func EmailBind(c *gin.Context) {
@@ -449,5 +437,4 @@ func EmailBind(c *gin.Context) {
 		return
 	}
 	ResponseOK(c, nil)
-	return
 }
