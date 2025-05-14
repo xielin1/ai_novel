@@ -74,14 +74,14 @@ func ValidateProjectOwnership(c *gin.Context) (int, *model.Project, error) {
 	userId := c.GetInt("id")
 	
 	// 获取项目信息
-	project, err := model.GetProjectById(projectId)
+	project, err := projectService.GetProjectById(projectId)
 	if err != nil {
 		ResponseError(c, "项目不存在")
 		return projectId, nil, err
 	}
 	
 	// 验证所有权
-	if project.UserId != userId {
+	if !projectService.CheckProjectOwnership(project, userId) {
 		ResponseError(c, "无权访问该项目")
 		return projectId, project, err
 	}

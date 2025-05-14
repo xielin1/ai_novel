@@ -1,10 +1,8 @@
 package controller
 
 import (
-	"gin-template/model"
-	"net/http"
+	"gin-template/service"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +13,8 @@ type ProjectRequest struct {
 	Description string `json:"description"`
 	Genre       string `json:"genre"`
 }
+
+var projectService = &service.ProjectService{}
 
 // GetProjects 获取项目列表
 func GetProjects(c *gin.Context) {
@@ -27,18 +27,14 @@ func GetProjects(c *gin.Context) {
 	
 	userId := c.GetInt("id")
 	
-	projects, total, err := model.GetUserProjects(userId, (page-1)*limit, limit)
+	projects, total, err := projectService.GetUserProjects(userId, (page-1)*limit, limit)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    projects,
+	ResponseOK(c, gin.H{
+		"data": projects,
 		"pagination": gin.H{
 			"total": total,
 			"page":  page,
@@ -52,10 +48,7 @@ func GetProjects(c *gin.Context) {
 func CreateProject(c *gin.Context) {
 	var projectReq ProjectRequest
 	if err := c.ShouldBindJSON(&projectReq); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		ResponseError(c, "无效的参数")
 		return
 	}
 	
@@ -63,87 +56,49 @@ func CreateProject(c *gin.Context) {
 	username := c.GetString("username")
 	
 	if projectReq.Title == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "项目标题不能为空",
-		})
+		ResponseError(c, "项目标题不能为空")
 		return
 	}
 	
-	currentTime := time.Now().Format("2006-01-02T15:04:05Z")
-	
-	project := &model.Project{
-		Title:       projectReq.Title,
-		Description: projectReq.Description,
-		Genre:       projectReq.Genre,
-		UserId:      userId,
-		Username:    username,
-		CreatedAt:   currentTime,
-		UpdatedAt:   currentTime,
-		LastEditedAt: currentTime,
-	}
-	
-	err := project.Insert()
+	project, err := projectService.CreateProject(projectReq.Title, projectReq.Description, projectReq.Genre, userId, username)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "项目创建成功",
-		"data":    project,
-	})
+	ResponseOKWithMessage(c, "项目创建成功", project)
 }
 
 // GetProject 获取项目详情
 func GetProject(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		ResponseError(c, "无效的参数")
 		return
 	}
 	
 	userId := c.GetInt("id")
 	
-	project, err := model.GetProjectById(id)
+	project, err := projectService.GetProjectById(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
 	// 验证项目所有权
-	if project.UserId != userId {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无权访问该项目",
-		})
+	if !projectService.CheckProjectOwnership(project, userId) {
+		ResponseError(c, "无权访问该项目")
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    project,
-	})
+	ResponseOK(c, project)
 }
 
 // UpdateProject 更新项目信息
 func UpdateProject(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		ResponseError(c, "无效的参数")
 		return
 	}
 	
@@ -151,95 +106,59 @@ func UpdateProject(c *gin.Context) {
 	
 	var projectReq ProjectRequest
 	if err := c.ShouldBindJSON(&projectReq); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		ResponseError(c, "无效的参数")
 		return
 	}
 	
-	project, err := model.GetProjectById(id)
+	project, err := projectService.GetProjectById(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
 	// 验证项目所有权
-	if project.UserId != userId {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无权修改该项目",
-		})
+	if !projectService.CheckProjectOwnership(project, userId) {
+		ResponseError(c, "无权修改该项目")
 		return
 	}
 	
 	// 更新项目信息
-	project.Title = projectReq.Title
-	project.Description = projectReq.Description
-	project.Genre = projectReq.Genre
-	project.UpdatedAt = time.Now().Format("2006-01-02T15:04:05Z")
-	
-	err = project.Update()
+	err = projectService.UpdateProject(project, projectReq.Title, projectReq.Description, projectReq.Genre)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "项目更新成功",
-		"data":    project,
-	})
+	ResponseOKWithMessage(c, "项目更新成功", project)
 }
 
 // DeleteProject 删除项目
 func DeleteProject(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无效的参数",
-		})
+		ResponseError(c, "无效的参数")
 		return
 	}
 	
 	userId := c.GetInt("id")
 	
-	project, err := model.GetProjectById(id)
+	project, err := projectService.GetProjectById(id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
 	// 验证项目所有权
-	if project.UserId != userId {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "无权删除该项目",
-		})
+	if !projectService.CheckProjectOwnership(project, userId) {
+		ResponseError(c, "无权删除该项目")
 		return
 	}
 	
-	err = project.Delete()
+	err = projectService.DeleteProject(project)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		ResponseError(c, err.Error())
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "项目删除成功",
-	})
+	ResponseOKWithMessage(c, "项目删除成功", nil)
 } 
