@@ -15,6 +15,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/about", controller.GetAbout)
+		apiRouter.GET("/homepage", controller.GetHomePageContent)
 		apiRouter.GET("/verification", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), controller.ResetPassword)
@@ -50,12 +51,22 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件
 		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)      // 导出大纲
 
+		// 套餐管理API路由
+		packageRoute := apiRouter.Group("/packages")
+		packageRoute.Use(middleware.UserAuth()) // 需要登录才能使用
+		{
+			packageRoute.GET("", controller.GetPackages)                   // 获取套餐列表
+			packageRoute.POST("/subscribe", controller.SubscribePackage)   // 购买/订阅套餐
+			packageRoute.POST("/cancel-renewal", controller.CancelRenewal) // 取消自动续费
+		}
+
 		//user
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), controller.Login)
 			userRoute.GET("/logout", controller.Logout)
+			userRoute.POST("/referral", middleware.UserAuth(), controller.UseReferral) // 使用他人推荐码
 
 			selfRoute := userRoute.Group("/")
 			selfRoute.Use(middleware.UserAuth(), middleware.NoTokenAuth())
@@ -64,6 +75,10 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateToken)
+				selfRoute.GET("/package", controller.GetUserPackage) // 获取当前用户的套餐信息
+				selfRoute.GET("/referral-code", controller.GetReferralCode) // 获取个人推荐码
+				selfRoute.GET("/referrals", controller.GetReferrals) // 获取推荐记录
+				selfRoute.POST("/generate-referral-code", controller.GenerateReferralCode) // 生成新的推荐码
 			}
 
 			adminRoute := userRoute.Group("/")

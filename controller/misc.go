@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"gin-template/common"
 	"gin-template/model"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func GetStatus(c *gin.Context) {
@@ -27,6 +28,7 @@ func GetStatus(c *gin.Context) {
 			"server_address":     common.ServerAddress,
 			"turnstile_check":    common.TurnstileCheckEnabled,
 			"turnstile_site_key": common.TurnstileSiteKey,
+			"use_external_home":  common.UseExternalHome,
 		},
 	})
 	return
@@ -50,6 +52,17 @@ func GetAbout(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    common.OptionMap["About"],
+	})
+	return
+}
+
+func GetHomePageContent(c *gin.Context) {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    common.OptionMap["HomePageContent"],
 	})
 	return
 }

@@ -21,19 +21,15 @@ import File from './pages/File';
 import AIPrompt from './pages/AIPrompt';
 import Dashboard from './pages/Dashboard';
 import Editor from './pages/Editor';
+import UserProfile from './pages/UserProfile';
+import Payment from './pages/Payment';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));
 const About = lazy(() => import('./pages/About'));
 
-// 根路径组件，根据登录状态选择显示Home或重定向到Dashboard
+// 根路径组件，直接显示Home组件，不再根据登录状态重定向
 const RootComponent = () => {
-  const [userState] = useContext(UserContext);
-  
-  if (userState.user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
   return (
     <Suspense fallback={<Loading></Loading>}>
       <Home />
@@ -205,6 +201,26 @@ function App() {
             <Suspense fallback={<Loading></Loading>}>
               <About />
             </Suspense>
+          }
+        />
+        
+        {/* 用户中心路由 */}
+        <Route
+          path='/profile'
+          element={
+            <PrivateRoute>
+              <UserProfile />
+            </PrivateRoute>
+          }
+        />
+        
+        {/* 支付页面路由 */}
+        <Route
+          path='/payment'
+          element={
+            <PrivateRoute>
+              <Payment />
+            </PrivateRoute>
           }
         />
         

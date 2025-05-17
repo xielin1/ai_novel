@@ -40,6 +40,8 @@ func InitOptionMap() {
 	common.OptionMap["About"] = ""
 	common.OptionMap["Footer"] = common.Footer
 	common.OptionMap["HomePageLink"] = common.HomePageLink
+	common.OptionMap["HomePageContent"] = common.HomePageContent
+	common.OptionMap["UseExternalHome"] = strconv.FormatBool(common.UseExternalHome)
 	common.OptionMap["SystemName"] = common.SystemName
 	common.OptionMap["ServerAddress"] = ""
 	common.OptionMap["GitHubClientId"] = ""
@@ -143,6 +145,10 @@ func updateOptionMap(key string, value string) {
 		common.Footer = value
 	case "HomePageLink":
 		common.HomePageLink = value
+	case "HomePageContent":
+		common.HomePageContent = value
+	case "UseExternalHome":
+		common.UseExternalHome = value == "true"
 	case "SystemName":
 		common.SystemName = value
 	case "WeChatServerAddress":

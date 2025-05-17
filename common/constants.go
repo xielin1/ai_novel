@@ -1,9 +1,10 @@
 package common
 
 import (
-	"github.com/google/uuid"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var StartTime = time.Now().Unix() // unit: second
@@ -12,6 +13,8 @@ var SystemName = "项目模板"
 var ServerAddress = "http://localhost:3000"
 var Footer = ""
 var HomePageLink = ""
+var HomePageContent = "" // 首页内容配置，存储JSON格式的首页配置信息
+var UseExternalHome = false // 是否使用外部首页链接而非内置首页
 
 // Any options with "Secret", "Token" in its key won't be return by GetOptions
 

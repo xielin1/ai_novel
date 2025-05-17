@@ -143,7 +143,18 @@ const Header = () => {
               {renderButtons(true)}
               <Menu.Item>
                 {userState.user ? (
-                  <Button onClick={logout}>注销</Button>
+                  <>
+                    <Button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        navigate('/profile');
+                      }}
+                      style={{ marginRight: '8px' }}
+                    >
+                      用户中心
+                    </Button>
+                    <Button onClick={logout}>注销</Button>
+                  </>
                 ) : (
                   <>
                     <Button
@@ -159,8 +170,19 @@ const Header = () => {
                         setShowSidebar(false);
                         navigate('/register');
                       }}
+                      primary
                     >
                       注册
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowSidebar(false);
+                        navigate('/login');
+                      }}
+                      color='teal'
+                      style={{ marginTop: '8px' }}
+                    >
+                      <Icon name='pencil' /> 开始创作
                     </Button>
                   </>
                 )}
@@ -193,16 +215,35 @@ const Header = () => {
                 className='link item'
               >
                 <Dropdown.Menu>
-                  <Dropdown.Item onClick={logout}>注销</Dropdown.Item>
+                  <Dropdown.Item as={Link} to='/profile'>
+                    <Icon name='user circle' />
+                    用户中心
+                  </Dropdown.Item>
+                  <Dropdown.Item onClick={logout}>
+                    <Icon name='sign-out' />
+                    注销
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             ) : (
-              <Menu.Item
-                name='登录'
-                as={Link}
-                to='/login'
-                className='btn btn-link'
-              />
+              <>
+                <Menu.Item
+                  name='登录'
+                  as={Link}
+                  to='/login'
+                  className='btn btn-link'
+                />
+                <Menu.Item>
+                  <Button as={Link} to='/register' primary>
+                    注册
+                  </Button>
+                </Menu.Item>
+                <Menu.Item>
+                  <Button as={Link} to='/login' color='teal'>
+                    <Icon name='pencil' /> 开始创作
+                  </Button>
+                </Menu.Item>
+              </>
             )}
           </Menu.Menu>
         </Container>

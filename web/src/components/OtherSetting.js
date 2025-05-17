@@ -10,6 +10,8 @@ const OtherSetting = () => {
     About: '',
     SystemName: '',
     HomePageLink: '',
+    HomePageContent: '',
+    UseExternalHome: 'false',
   });
   let [loading, setLoading] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -73,8 +75,16 @@ const OtherSetting = () => {
     await updateOption('HomePageLink', inputs.HomePageLink);
   };
 
+  const submitHomePageContent = async () => {
+    await updateOption('HomePageContent', inputs.HomePageContent);
+  };
+
   const submitAbout = async () => {
     await updateOption('About', inputs.About);
+  };
+
+  const submitUseExternalHome = async () => {
+    await updateOption('UseExternalHome', inputs.UseExternalHome);
   };
 
   const openGitHubRelease = () => {
@@ -138,6 +148,25 @@ const OtherSetting = () => {
             />
           </Form.Group>
           <Form.Button onClick={submitHomePageLink}>设置首页链接</Form.Button>
+          <Form.Group>
+            <Form.Checkbox
+              label='使用外部首页链接（优先使用iframe而非内置首页）'
+              checked={inputs.UseExternalHome === 'true'}
+              onChange={(e, data) => setInputs({...inputs, UseExternalHome: data.checked ? 'true' : 'false'})}
+            />
+          </Form.Group>
+          <Form.Button onClick={submitUseExternalHome}>保存外部首页设置</Form.Button>
+          <Form.Group widths='equal'>
+            <Form.TextArea
+              label='首页内容配置'
+              placeholder='在此输入首页内容配置（JSON格式），包括标题、描述、背景图等'
+              value={inputs.HomePageContent}
+              name='HomePageContent'
+              onChange={handleInputChange}
+              style={{ minHeight: 150, fontFamily: 'JetBrains Mono, Consolas' }}
+            />
+          </Form.Group>
+          <Form.Button onClick={submitHomePageContent}>保存首页配置</Form.Button>
           <Form.Group widths='equal'>
             <Form.TextArea
               label='关于'

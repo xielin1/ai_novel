@@ -42,7 +42,9 @@ const Dashboard = () => {
       const res = await API.get('/api/projects');
       const { success, message, data } = res.data;
       if (success) {
-        setProjects(data || []);
+        // 解析正确的数据结构，项目数据在 data.data 中
+        const projectsData = data?.data || [];
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
       } else {
         showError(message || '获取项目列表失败');
       }
@@ -149,7 +151,7 @@ const Dashboard = () => {
   };
 
   // 过滤项目列表
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = Array.isArray(projects) ? projects.filter(project => {
     if (!searchTerm) return true;
     
     const term = searchTerm.toLowerCase();
@@ -158,7 +160,7 @@ const Dashboard = () => {
       (project.description && project.description.toLowerCase().includes(term)) ||
       (project.genre && project.genre.toLowerCase().includes(term))
     );
-  });
+  }) : [];
 
   // 格式化日期显示
   const formatDate = dateString => {
@@ -247,13 +249,13 @@ const Dashboard = () => {
                   </Card.Content>
                   <Card.Content extra>
                     <div className="ui three buttons" style={{ marginLeft: '-5px', marginRight: '-5px' }}>
-                      <Button basic color='blue' onClick={() => handleOpenProject(project.id)}>
+                      <Button basic color='blue' onClick={() => handleOpenProject(project.id)} style={{ whiteSpace: 'nowrap', padding: '10px 5px' }}>
                         <Icon name='edit outline' /> 编辑
                       </Button>
-                      <Button basic color='teal' onClick={() => showEditModal(project)}>
+                      <Button basic color='teal' onClick={() => showEditModal(project)} style={{ whiteSpace: 'nowrap', padding: '10px 5px' }}>
                         <Icon name='setting' /> 设置
                       </Button>
-                      <Button basic color='red' onClick={() => handleDeleteProject(project.id)}>
+                      <Button basic color='red' onClick={() => handleDeleteProject(project.id)} style={{ whiteSpace: 'nowrap', padding: '10px 5px' }}>
                         <Icon name='trash alternate outline' /> 删除
                       </Button>
                     </div>
