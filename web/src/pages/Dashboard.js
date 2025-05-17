@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalTitle, setModalTitle] = useState('创建新项目');
+  const [modalTitle, setModalTitle] = useState('创建新作品');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -46,11 +46,11 @@ const Dashboard = () => {
         const projectsData = data?.data || [];
         setProjects(Array.isArray(projectsData) ? projectsData : []);
       } else {
-        showError(message || '获取项目列表失败');
+        showError(message || '获取作品列表失败');
       }
     } catch (error) {
-      console.error('获取项目列表失败', error);
-      showError(error.message || '获取项目列表失败，请稍后重试');
+      console.error('获取作品列表失败', error);
+      showError(error.message || '获取作品列表失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ const Dashboard = () => {
   // 处理创建/编辑项目
   const handleSubmit = async () => {
     if (!formData.title) {
-      showError('项目名称不能为空');
+      showError('作品名称不能为空');
       return;
     }
 
@@ -84,7 +84,7 @@ const Dashboard = () => {
 
       const { success, message, data } = res.data;
       if (success) {
-        showSuccess(editingId ? '项目更新成功' : '项目创建成功');
+        showSuccess(editingId ? '作品更新成功' : '作品创建成功');
         setModalOpen(false);
         fetchProjects();
         // 重置表单
@@ -104,12 +104,12 @@ const Dashboard = () => {
 
   // 删除项目
   const handleDeleteProject = async (id) => {
-    if (window.confirm('确定要删除这个项目吗？此操作不可撤销。')) {
+    if (window.confirm('确定要删除这个作品吗？此操作不可撤销。')) {
       try {
         const res = await API.delete(`/api/projects/${id}`);
         const { success, message } = res.data;
         if (success) {
-          showSuccess('项目删除成功');
+          showSuccess('作品删除成功');
           fetchProjects();
         } else {
           showError(message || '删除失败');
@@ -128,7 +128,7 @@ const Dashboard = () => {
 
   // 显示创建项目模态框
   const showCreateModal = () => {
-    setModalTitle('创建新项目');
+    setModalTitle('创建新作品');
     setEditingId(null);
     setFormData({
       title: '',
@@ -140,7 +140,7 @@ const Dashboard = () => {
 
   // 显示编辑项目模态框
   const showEditModal = (project) => {
-    setModalTitle('编辑项目');
+    setModalTitle('编辑作品');
     setEditingId(project.id);
     setFormData({
       title: project.title,
@@ -186,15 +186,15 @@ const Dashboard = () => {
           <Header as='h2' style={{ margin: 0 }}>
             <Icon name='book' style={{ color: '#2185d0' }}/>
             <Header.Content>
-              我的项目
-              <Header.Subheader>管理您的创作项目</Header.Subheader>
+              我的作品
+              <Header.Subheader>管理您的创作作品</Header.Subheader>
             </Header.Content>
           </Header>
           
           <div style={{ display: 'flex', gap: '12px' }}>
             <Input 
               icon='search' 
-              placeholder='搜索项目...' 
+              placeholder='搜索作品...' 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ borderRadius: '20px', minWidth: '200px' }}
@@ -207,7 +207,7 @@ const Dashboard = () => {
               style={{ borderRadius: '20px' }}
             >
               <Icon name='plus' />
-              创建新项目
+              创建新作品
             </Button>
           </div>
         </div>
@@ -272,8 +272,8 @@ const Dashboard = () => {
           >
             <Icon name='info circle' />
             <Message.Content>
-              <Message.Header>{searchTerm ? '没有匹配的项目' : '暂无项目'}</Message.Header>
-              <p>{searchTerm ? '尝试使用其他关键词，或' : ''}点击"创建新项目"按钮开始您的创作之旅！</p>
+              <Message.Header>{searchTerm ? '没有匹配的作品' : '暂无作品'}</Message.Header>
+              <p>{searchTerm ? '尝试使用其他关键词，或' : ''}点击"创建新作品"按钮开始您的创作之旅！</p>
             </Message.Content>
           </Message>
         )}
@@ -292,23 +292,23 @@ const Dashboard = () => {
         <Modal.Content style={{ padding: '24px' }}>
           <Form>
             <Form.Field style={{ marginBottom: '16px' }}>
-              <label>项目名称</label>
+              <label>作品名称</label>
               <Input
                 fluid
                 name='title'
                 value={formData.title}
                 onChange={handleInputChange}
-                placeholder='请输入项目名称'
+                placeholder='请输入作品名称'
                 required
               />
             </Form.Field>
             <Form.Field style={{ marginBottom: '16px' }}>
-              <label>项目描述</label>
+              <label>作品描述</label>
               <Form.TextArea
                 name='description'
                 value={formData.description}
                 onChange={handleInputChange}
-                placeholder='请输入项目描述（选填）'
+                placeholder='请输入作品描述（选填）'
                 rows={3}
                 style={{ resize: 'none' }}
               />
@@ -334,7 +334,7 @@ const Dashboard = () => {
             onClick={handleSubmit} 
             style={{ borderRadius: '4px' }}
           >
-            {editingId ? '保存修改' : '创建项目'}
+            {editingId ? '保存修改' : '创建作品'}
           </Button>
         </Modal.Actions>
       </Modal>

@@ -21,13 +21,13 @@ const headerButtons = [
     icon: 'home',
   },
   {
-    name: '我的项目',
+    name: '我的作品',
     to: '/dashboard',
     icon: 'book',
     requireLogin: true,
   },
   {
-    name: 'AI提示',
+    name: '网文续写',
     to: '/ai/prompt',
     icon: 'magic',
   },

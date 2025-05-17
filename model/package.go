@@ -4,6 +4,17 @@ import (
 	"time"
 )
 
+// FreePackage 免费版套餐常量
+var FreePackage = Package{
+	Id:            0,
+	Name:          "免费版",
+	Description:   "基础功能免费体验",
+	Price:         0,
+	MonthlyTokens: 500,
+	Duration:      "monthly",
+	Features:      `["基础AI续写功能", "每月500个免费Token", "社区支持"]`,
+}
+
 // Package 套餐模型
 type Package struct {
 	Id            uint      `json:"id" gorm:"primaryKey"`
@@ -49,9 +60,35 @@ type Subscription struct {
 
 // GetUserCurrentPackage 获取用户当前套餐
 func GetUserCurrentPackage(userId uint) (*Subscription, *Package, error) {
-	// 这里实现从数据库查询用户当前有效的订阅和套餐信息
-	// 返回订阅和套餐信息，如果发生错误则返回错误
-	return nil, nil, nil
+	// 查询用户是否有有效订阅
+	var subscription Subscription
+	var package_ Package
+	
+	// 查询用户当前有效订阅
+	result := DB.Where("user_id = ? AND status = ? AND expiry_date > ?", userId, "active", time.Now()).
+		Order("expiry_date DESC").
+		First(&subscription)
+	
+	// 如果没有找到有效订阅，返回免费套餐
+	if result.Error != nil {
+		// 创建一个虚拟的订阅对象
+		freeSubscription := &Subscription{
+			UserId:      userId,
+			PackageId:   0, // 免费套餐ID
+			Status:      "active",
+			StartDate:   time.Now(),
+			ExpiryDate:  time.Now().AddDate(100, 0, 0), // 设置一个很久远的过期时间
+			AutoRenew:   false,
+		}
+		return freeSubscription, &FreePackage, nil
+	}
+	
+	// 查询订阅对应的套餐信息
+	if err := DB.First(&package_, subscription.PackageId).Error; err != nil {
+		return &subscription, &FreePackage, nil // 如果套餐不存在，也返回免费套餐
+	}
+	
+	return &subscription, &package_, nil
 }
 
 // CreateSubscription 创建新的订阅
@@ -84,5 +121,15 @@ type TokenDistribution struct {
 func DistributeMonthlyTokens(userId uint, subscriptionId uint, packageId uint, amount int) error {
 	// 实现分发Token的逻辑
 	// 创建Token分发记录并更新用户Token余额
+	return nil
+}
+
+// InitFreePackage 将免费套餐添加到数据库中
+func InitFreePackage() error {
+	var count int64
+	DB.Model(&Package{}).Where("id = ?", 0).Count(&count)
+	if count == 0 {
+		return DB.Create(&FreePackage).Error
+	}
 	return nil
 } 

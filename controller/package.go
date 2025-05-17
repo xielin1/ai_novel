@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"gin-template/model"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,8 +32,20 @@ type Subscription struct {
 
 // 获取套餐列表
 func GetPackages(c *gin.Context) {
+	// 添加免费版套餐
+	freePackage := Package{
+		ID:            0,
+		Name:          "免费版",
+		Description:   "基础功能免费体验",
+		Price:         0,
+		MonthlyTokens: 500,
+		Duration:      "monthly",
+		Features:      []string{"基础AI续写功能", "每月500个免费Token", "社区支持"},
+	}
+
 	// 这里应从数据库中获取套餐信息
 	packages := []Package{
+		freePackage,
 		{
 			ID:            1,
 			Name:          "基础版",
@@ -134,26 +148,42 @@ func SubscribePackage(c *gin.Context) {
 // 获取当前套餐信息
 func GetUserPackage(c *gin.Context) {
 	// 获取当前用户ID
-	// 在实际代码中使用这个ID查询数据库
-	_ = c.GetUint("id")
+	userId := c.GetUint("id")
 
 	// 从数据库获取用户的订阅信息
-	// 这里应该有从数据库获取用户订阅信息的逻辑...
-
-	// 示例响应
+	subscription, packageInfo, err := model.GetUserCurrentPackage(userId)
+	
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "获取套餐信息失败",
+		})
+		return
+	}
+	
+	// 格式化日期为字符串
+	startDate := subscription.StartDate.Format(time.RFC3339)
+	expiryDate := subscription.ExpiryDate.Format(time.RFC3339)
+	
+	// 构建响应数据
+	var nextRenewalDate string
+	if subscription.AutoRenew {
+		nextRenewalDate = subscription.ExpiryDate.Format(time.RFC3339)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
 			"package": gin.H{
-				"id":              2,
-				"name":            "升级版",
-				"monthly_tokens":  15000,
+				"id":              packageInfo.Id,
+				"name":            packageInfo.Name,
+				"monthly_tokens":  packageInfo.MonthlyTokens,
 			},
-			"subscription_status": "active",
-			"start_date":          "2023-06-05T14:30:00Z",
-			"expiry_date":         "2023-07-05T23:59:59Z",
-			"auto_renew":          true,
-			"next_renewal_date":   "2023-07-05T00:00:00Z",
+			"subscription_status": subscription.Status,
+			"start_date":          startDate,
+			"expiry_date":         expiryDate,
+			"auto_renew":          subscription.AutoRenew,
+			"next_renewal_date":   nextRenewalDate,
 		},
 	})
 }

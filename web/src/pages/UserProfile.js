@@ -15,6 +15,17 @@ const UserProfile = () => {
   const [inputReferralCode, setInputReferralCode] = useState('');
   const [submittingReferralCode, setSubmittingReferralCode] = useState(false);
 
+  // 免费版套餐信息
+  const freePackage = {
+    id: 'free',
+    name: '免费版',
+    price: '0',
+    duration: 'monthly',
+    description: '基础功能免费体验',
+    monthly_tokens: 500,
+    features: ['基础AI续写功能', '每月500个免费Token', '社区支持']
+  };
+
   useEffect(() => {
     fetchUserPackage();
     fetchPackages();
@@ -28,9 +39,26 @@ const UserProfile = () => {
       const { success, data } = res.data;
       if (success) {
         setPackageInfo(data);
+      } else {
+        // 如果用户没有套餐，设置为免费版
+        setPackageInfo({
+          package: freePackage,
+          subscription_status: '有效',
+          start_date: '注册日期',
+          expiry_date: '永久有效',
+          auto_renew: false
+        });
       }
     } catch (error) {
       console.error('获取用户套餐信息失败', error);
+      // 发生错误时也设置为免费版
+      setPackageInfo({
+        package: freePackage,
+        subscription_status: '有效',
+        start_date: '注册日期',
+        expiry_date: '永久有效',
+        auto_renew: false
+      });
     } finally {
       setLoading(false);
     }
@@ -124,6 +152,8 @@ const UserProfile = () => {
       );
     }
 
+    const isFreePlan = packageInfo.package.id === 'free';
+
     return (
       <Segment>
         <Header as='h3'>当前套餐信息</Header>
@@ -143,17 +173,27 @@ const UserProfile = () => {
         </Grid>
         <Divider />
         <p><strong>订阅状态:</strong> {packageInfo.subscription_status}</p>
-        <p><strong>开始日期:</strong> {packageInfo.start_date}</p>
-        <p><strong>到期日期:</strong> {packageInfo.expiry_date}</p>
-        <p><strong>自动续费:</strong> {packageInfo.auto_renew ? '是' : '否'}</p>
-        {packageInfo.auto_renew && (
-          <Button color='yellow' onClick={() => cancelRenewal()} size='small'>
-            取消自动续费
+        {!isFreePlan && (
+          <>
+            <p><strong>开始日期:</strong> {packageInfo.start_date}</p>
+            <p><strong>到期日期:</strong> {packageInfo.expiry_date}</p>
+            <p><strong>自动续费:</strong> {packageInfo.auto_renew ? '是' : '否'}</p>
+            {packageInfo.auto_renew && (
+              <Button color='yellow' onClick={() => cancelRenewal()} size='small'>
+                取消自动续费
+              </Button>
+            )}
+          </>
+        )}
+        {isFreePlan ? (
+          <Message info>
+            <p>您正在使用免费版套餐，升级到高级套餐可获得更多Token和高级功能！</p>
+          </Message>
+        ) : (
+          <Button color='blue' size='small'>
+            升级套餐
           </Button>
         )}
-        <Button color='blue' size='small'>
-          升级套餐
-        </Button>
       </Segment>
     );
   };
@@ -186,8 +226,41 @@ const UserProfile = () => {
           
           {(!packageInfo || packages.length > 0) && (
             <Segment>
-              <Header as='h3'>{packageInfo ? '升级套餐' : '选择套餐'}</Header>
+              <Header as='h3'>
+                {packageInfo && packageInfo.package.id !== 'free' ? '升级套餐' : '选择套餐'}
+              </Header>
               <Card.Group>
+                {/* 添加免费版套餐卡片（仅当未显示当前套餐为免费版时显示） */}
+                {packageInfo && packageInfo.package.id !== 'free' && (
+                  <Card key={freePackage.id}>
+                    <Card.Content>
+                      <Card.Header>{freePackage.name}</Card.Header>
+                      <Card.Meta>{freePackage.price} 元/{freePackage.duration === 'monthly' ? '月' : '永久'}</Card.Meta>
+                      <Card.Description>
+                        <p>{freePackage.description}</p>
+                        <p>每月可获得 {freePackage.monthly_tokens} Token</p>
+                      </Card.Description>
+                    </Card.Content>
+                    <Card.Content extra>
+                      <div>
+                        {freePackage.features.map((feature, index) => (
+                          <Label key={index} basic>
+                            <Icon name='check' /> {feature}
+                          </Label>
+                        ))}
+                      </div>
+                    </Card.Content>
+                    <Button 
+                      attached='bottom' 
+                      disabled
+                      basic
+                    >
+                      当前免费版
+                    </Button>
+                  </Card>
+                )}
+                
+                {/* 付费套餐列表 */}
                 {packages.map(pkg => (
                   <Card key={pkg.id}>
                     <Card.Content>
@@ -212,7 +285,7 @@ const UserProfile = () => {
                       primary
                       onClick={() => handleSubscribe(pkg.id)}
                     >
-                      {packageInfo ? '升级到此套餐' : '订阅此套餐'}
+                      {packageInfo && packageInfo.package.id !== 'free' ? '升级到此套餐' : '订阅此套餐'}
                     </Button>
                   </Card>
                 ))}
