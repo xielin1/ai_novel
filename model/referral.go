@@ -135,11 +135,24 @@ func UseReferralCode(userId uint, referralCode string) (int, error) {
 		return 0, result.Error
 	}
 
-	// 给用户增加token
-	// 这里应该有更新用户token余额的逻辑...
-	// 这部分将在service层实现
+	// 给被推荐人增加token奖励
+	userIdInt := int(userId)
+	description := "使用推荐码 " + referralCode + " 获得奖励"
+	newBalance, err := AddTokenRecord(userIdInt, tokensRewarded, TokenRecordTypeReferral, int(use.Id), description)
+	if err != nil {
+		return 0, err
+	}
+	
+	// 给推荐人增加奖励(可以是相同数量或其他数量)
+	referrerIdInt := int(referral.UserId)
+	referrerReward := tokensRewarded // 推荐人获得相同数量的奖励，实际可以根据规则调整
+	referrerDescription := "您的推荐码被用户使用，获得奖励"
+	_, err = AddTokenRecord(referrerIdInt, referrerReward, TokenRecordTypeReferral, int(use.Id), referrerDescription)
+	if err != nil {
+		return 0, err
+	}
 
-	return tokensRewarded, nil
+	return newBalance, nil
 }
 
 // GetReferralStat 获取用户的推荐统计信息

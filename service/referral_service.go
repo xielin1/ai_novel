@@ -101,17 +101,14 @@ func (s *ReferralService) GenerateNewCode(userId uint) (map[string]interface{}, 
 
 // UseReferralCode 使用他人的推荐码
 func (s *ReferralService) UseReferralCode(userId uint, code string) (map[string]interface{}, error) {
-	// 使用推荐码
-	tokensRewarded, err := model.UseReferralCode(userId, code)
+	// 使用推荐码，此函数现在会返回更新后的token余额
+	newBalance, err := model.UseReferralCode(userId, code)
 	if err != nil {
 		return nil, err
 	}
 
-	// 这里可以添加更新用户token余额的逻辑
-	// 假设我们已经在model.UseReferralCode中更新了token余额
-
-	// 获取新的余额
-	newBalance := 1050 // 实际应该从用户账户中获取
+	// 获取奖励token数量 - 实际中应该从系统配置中获取
+	tokensRewarded := 200
 
 	return map[string]interface{}{
 		"tokens_rewarded": tokensRewarded,

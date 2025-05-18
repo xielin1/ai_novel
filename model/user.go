@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"gin-template/common"
+	"strconv"
 	"strings"
 )
 
@@ -95,8 +96,8 @@ func (user *User) Delete() error {
 // ValidateAndFill check password & user status
 func (user *User) ValidateAndFill() (err error) {
 	// When querying with struct, GORM will only query with non-zero fields,
-	// that means if your field’s value is 0, '', false or other zero values,
-	// it won’t be used to build query conditions
+	// that means if your field's value is 0, '', false or other zero values,
+	// it won't be used to build query conditions
 	password := user.Password
 	if user.Username == "" || password == "" {
 		return errors.New("用户名或密码为空")
@@ -187,4 +188,41 @@ func ResetUserPasswordByEmail(email string, password string) error {
 	}
 	err = DB.Model(&User{}).Where("email = ?", email).Update("password", hashedPassword).Error
 	return err
+}
+
+// UpdateUserTokenBalance 更新用户token余额
+func UpdateUserTokenBalance(userId int, amount int) (int, error) {
+	if userId == 0 {
+		return 0, errors.New("用户ID不能为空")
+	}
+	
+	// 获取用户当前信息
+	user, err := GetUserById(userId, true)
+	if err != nil {
+		return 0, err
+	}
+	
+	// 解析当前token余额
+	var currentBalance int
+	if user.Token != "" {
+		currentBalance, err = strconv.Atoi(user.Token)
+		if err != nil {
+			currentBalance = 0
+		}
+	}
+	
+	// 计算新余额
+	newBalance := currentBalance + amount
+	if newBalance < 0 {
+		newBalance = 0
+	}
+	
+	// 更新用户token余额
+	user.Token = strconv.Itoa(newBalance)
+	err = DB.Model(&User{}).Where("id = ?", userId).Update("token", user.Token).Error
+	if err != nil {
+		return 0, err
+	}
+	
+	return newBalance, nil
 }
