@@ -1,6 +1,7 @@
 package service
 
 import (
+	"gin-template/common"
 	"gin-template/model"
 )
 
@@ -17,6 +18,7 @@ func (s *ReferralService) GetReferralCode(userId uint) (map[string]interface{}, 
 
 	// 如果用户没有推荐码，则创建一个
 	if referral == nil || err != nil {
+		common.SysLog("[referral]code not exist,generate referral code")
 		referral, err = model.GenerateNewReferralCode(userId)
 		if err != nil {
 			return nil, err
@@ -29,7 +31,7 @@ func (s *ReferralService) GetReferralCode(userId uint) (map[string]interface{}, 
 		return nil, err
 	}
 
-	// 构造分享URL
+	//todo 构造分享URL
 	shareURL := "https://example.com/register?ref=" + referral.Code
 
 	return map[string]interface{}{
@@ -117,4 +119,4 @@ func (s *ReferralService) UseReferralCode(userId uint, code string) (map[string]
 		"tokens_rewarded": tokensRewarded,
 		"new_balance":     newBalance,
 	}, nil
-} 
+}
