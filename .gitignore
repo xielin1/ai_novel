@@ -5,3 +5,7 @@ upload
 *.db
 build
 node_modules
+logs
+.env
+gin-template
+.gitignore

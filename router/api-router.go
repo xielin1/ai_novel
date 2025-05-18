@@ -48,7 +48,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/outlines/:id", middleware.UserAuth(), controller.GetOutline)         // 获取大纲内容
 		apiRouter.POST("/outlines/:id", middleware.UserAuth(), controller.SaveOutline)       // 保存大纲内容
 		apiRouter.GET("/versions/:id", middleware.UserAuth(), controller.GetVersions)        // 获取版本历史
-		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件
+		apiRouter.POST("/outline/parse/:id", middleware.UserAuth(), controller.ParseOutline) // 解析大纲文件
+		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件（兼容旧接口）
 		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)      // 导出大纲
 
 		// 套餐管理API路由
@@ -93,6 +94,7 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.DELETE("/:id", controller.DeleteUser)
 			}
 		}
+
 		//option
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth(), middleware.NoTokenAuth())
@@ -100,6 +102,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.PUT("/", controller.UpdateOption)
 		}
+		
 		//file
 		fileRoute := apiRouter.Group("/file")
 		fileRoute.Use(middleware.AdminAuth())

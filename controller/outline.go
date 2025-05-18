@@ -8,6 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// projectService 由 controller/project.go 定义，这里复用该实例
+var _ = projectService
+
 // GetOutline 获取大纲内容
 func GetOutline(c *gin.Context) {
 	projectId, _, err := ValidateProjectOwnership(c)
@@ -93,6 +96,12 @@ func AIGenerate(c *gin.Context) {
 
 // UploadOutline 上传大纲文件
 func UploadOutline(c *gin.Context) {
+	// 为了保持兼容性，调用新的 ParseOutline 函数
+	ParseOutline(c)
+}
+
+// ParseOutline 解析大纲文件（新接口）
+func ParseOutline(c *gin.Context) {
 	// 验证项目所有权（这里projectId未使用，但保留验证是必要的）
 	_, _, err := ValidateProjectOwnership(c)
 	if err != nil {
