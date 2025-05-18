@@ -11,6 +11,8 @@ func SetApiRouter(router *gin.Engine) {
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
 	{
+		// 初始化控制器
+		referralController := controller.NewReferralController()
 
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
@@ -67,7 +69,7 @@ func SetApiRouter(router *gin.Engine) {
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), controller.Login)
 			userRoute.GET("/logout", controller.Logout)
-			userRoute.POST("/referral", middleware.UserAuth(), controller.UseReferral) // 使用他人推荐码
+			userRoute.POST("/referral", middleware.UserAuth(), referralController.UseReferral) // 使用他人推荐码
 
 			selfRoute := userRoute.Group("/")
 			selfRoute.Use(middleware.UserAuth(), middleware.NoTokenAuth())
@@ -77,9 +79,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateToken)
 				selfRoute.GET("/package", controller.GetUserPackage) // 获取当前用户的套餐信息
-				selfRoute.GET("/referral-code", controller.GetReferralCode) // 获取个人推荐码
-				selfRoute.GET("/referrals", controller.GetReferrals) // 获取推荐记录
-				selfRoute.POST("/generate-referral-code", controller.GenerateReferralCode) // 生成新的推荐码
+				selfRoute.GET("/referral-code", referralController.GetReferralCode) // 获取个人推荐码
+				selfRoute.GET("/referrals", referralController.GetReferrals) // 获取推荐记录
+				selfRoute.POST("/generate-referral-code", referralController.GenerateReferralCode) // 生成新的推荐码
 			}
 
 			adminRoute := userRoute.Group("/")

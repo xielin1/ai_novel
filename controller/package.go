@@ -1,90 +1,34 @@
 package controller
 
 import (
-	"gin-template/model"
+	"gin-template/service"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// 套餐数据结构
-type Package struct {
-	ID            uint     `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	Price         float64  `json:"price"`
-	MonthlyTokens int      `json:"monthly_tokens"`
-	Duration      string   `json:"duration"`    // monthly, yearly, permanent
-	Features      []string `json:"features"`
-}
-
-// 订阅数据结构
-type Subscription struct {
-	PackageID    uint   `json:"package_id"`
-	UserID       uint   `json:"user_id"`
-	Status       string `json:"status"`        // active, expired, cancelled
-	StartDate    string `json:"start_date"`
-	ExpiryDate   string `json:"expiry_date"`
-	AutoRenew    bool   `json:"auto_renew"`
-	NextRenewal  string `json:"next_renewal_date,omitempty"`
+// 购买/订阅套餐请求
+type SubscribeRequest struct {
+	PackageID     uint   `json:"package_id" binding:"required"`
+	PaymentMethod string `json:"payment_method" binding:"required"`
 }
 
 // 获取套餐列表
 func GetPackages(c *gin.Context) {
-	// 添加免费版套餐
-	freePackage := Package{
-		ID:            0,
-		Name:          "免费版",
-		Description:   "基础功能免费体验",
-		Price:         0,
-		MonthlyTokens: 500,
-		Duration:      "monthly",
-		Features:      []string{"基础AI续写功能", "每月500个免费Token", "社区支持"},
-	}
-
-	// 这里应从数据库中获取套餐信息
-	packages := []Package{
-		freePackage,
-		{
-			ID:            1,
-			Name:          "基础版",
-			Description:   "适合轻度使用的创作者",
-			Price:         19.9,
-			MonthlyTokens: 5000,
-			Duration:      "monthly",
-			Features:      []string{"基础AI续写", "历史版本保存"},
-		},
-		{
-			ID:            2,
-			Name:          "升级版",
-			Description:   "适合中度创作需求",
-			Price:         49.9,
-			MonthlyTokens: 15000,
-			Duration:      "monthly",
-			Features:      []string{"高级AI续写", "历史版本保存", "优先客服支持"},
-		},
-		{
-			ID:            3,
-			Name:          "永久版会员",
-			Description:   "适合专业创作者",
-			Price:         199.9,
-			MonthlyTokens: 50000,
-			Duration:      "permanent",
-			Features:      []string{"高级AI续写", "无限历史版本", "专属客服", "高级导出格式"},
-		},
+	packages, err := service.GetAllPackages()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "获取套餐列表失败",
+			"code":    500,
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    packages,
 	})
-}
-
-// 购买/订阅套餐请求
-type SubscribeRequest struct {
-	PackageID     uint   `json:"package_id" binding:"required"`
-	PaymentMethod string `json:"payment_method" binding:"required"`
 }
 
 // 购买/订阅套餐
@@ -106,19 +50,17 @@ func SubscribePackage(c *gin.Context) {
 	}
 
 	// 验证套餐ID是否存在
-	// 这里应该有检查套餐是否存在的逻辑...
-
-	// 检查支付方式是否有效
-	validPaymentMethods := []string{"alipay", "wechat", "creditcard"}
-	validPayment := false
-	for _, method := range validPaymentMethods {
-		if req.PaymentMethod == method {
-			validPayment = true
-			break
-		}
+	if !service.ValidatePackageID(req.PackageID) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "套餐不存在",
+			"code":    400,
+		})
+		return
 	}
 
-	if !validPayment {
+	// 检查支付方式是否有效
+	if !service.ValidatePaymentMethod(req.PaymentMethod) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "不支持的支付方式",
@@ -127,83 +69,68 @@ func SubscribePackage(c *gin.Context) {
 		return
 	}
 
-	// 处理支付和订阅逻辑
-	// 这里应该有处理支付和创建订阅的逻辑...
+	// 获取当前用户ID
+	userID := c.GetUint("id")
+	
+	// 调用服务层创建订阅
+	result, err := service.CreatePackageSubscription(userID, req.PackageID, req.PaymentMethod)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "订阅失败",
+			"code":    500,
+		})
+		return
+	}
 
-	// 示例响应
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "订阅成功",
-		"data": gin.H{
-			"order_id":       "ORD20230605001",
-			"package_name":   "升级版",
-			"amount":         49.9,
-			"payment_status": "completed",
-			"valid_until":    "2023-07-05T23:59:59Z",
-			"tokens_awarded": 15000,
-		},
+		"data":    result,
 	})
 }
 
 // 获取当前套餐信息
 func GetUserPackage(c *gin.Context) {
 	// 获取当前用户ID
-	userId := c.GetUint("id")
-
-	// 从数据库获取用户的订阅信息
-	subscription, packageInfo, err := model.GetUserCurrentPackage(userId)
+	userID := c.GetUint("id")
 	
+	// 调用服务层获取套餐信息
+	packageInfo, err := service.GetUserCurrentPackageInfo(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "获取套餐信息失败",
+			"code":    500,
 		})
 		return
 	}
 	
-	// 格式化日期为字符串
-	startDate := subscription.StartDate.Format(time.RFC3339)
-	expiryDate := subscription.ExpiryDate.Format(time.RFC3339)
-	
-	// 构建响应数据
-	var nextRenewalDate string
-	if subscription.AutoRenew {
-		nextRenewalDate = subscription.ExpiryDate.Format(time.RFC3339)
-	}
-	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"package": gin.H{
-				"id":              packageInfo.Id,
-				"name":            packageInfo.Name,
-				"monthly_tokens":  packageInfo.MonthlyTokens,
-			},
-			"subscription_status": subscription.Status,
-			"start_date":          startDate,
-			"expiry_date":         expiryDate,
-			"auto_renew":          subscription.AutoRenew,
-			"next_renewal_date":   nextRenewalDate,
-		},
+		"data":    packageInfo,
 	})
 }
 
 // 取消自动续费
 func CancelRenewal(c *gin.Context) {
 	// 获取当前用户ID
-	// 在实际代码中使用这个ID更新数据库
-	_ = c.GetUint("id")
-
-	// 更新用户的订阅状态
-	// 这里应该有更新用户订阅状态的逻辑...
-
+	userID := c.GetUint("id")
+	
+	// 调用服务层取消自动续费
+	result, err := service.CancelPackageRenewal(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "取消自动续费失败",
+			"code":    500,
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "自动续费已取消",
-		"data": gin.H{
-			"package_name": "升级版",
-			"expiry_date":  "2023-07-05T23:59:59Z",
-			"auto_renew":   false,
-		},
+		"data":    result,
 	})
 } 

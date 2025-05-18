@@ -77,6 +77,14 @@ func InitDB() (err error) {
 		if err != nil {
 			return err
 		}
+		err = db.AutoMigrate(&Referral{})
+		if err != nil {
+			return err
+		}
+		err = db.AutoMigrate(&ReferralUse{})
+		if err != nil {
+			return err
+		}
 		err = createRootAccountIfNeed()
 		return err
 	} else {

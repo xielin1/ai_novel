@@ -31,9 +31,12 @@ type ReferralUse struct {
 
 // GetReferralByUserId 根据用户ID获取推荐码
 func GetReferralByUserId(userId uint) (*Referral, error) {
-	// 这里实现从数据库查询用户的推荐码
-	// 如果不存在，则生成一个新的推荐码
-	return nil, nil
+	var referral Referral
+	result := DB.Where("user_id = ?", userId).First(&referral)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &referral, nil
 }
 
 // GenerateNewReferralCode 为用户生成新的推荐码
@@ -54,7 +57,10 @@ func GenerateNewReferralCode(userId uint) (*Referral, error) {
 		oldReferral.Code = newCode
 		oldReferral.UpdatedAt = time.Now()
 		// 更新数据库...
-		
+		result := DB.Save(oldReferral)
+		if result.Error != nil {
+			return nil, result.Error
+		}
 		return oldReferral, nil
 	}
 
@@ -67,6 +73,10 @@ func GenerateNewReferralCode(userId uint) (*Referral, error) {
 		UpdatedAt: time.Now(),
 	}
 	// 保存到数据库...
+	result := DB.Create(newReferral)
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
 	return newReferral, nil
 }
@@ -76,6 +86,10 @@ func UseReferralCode(userId uint, referralCode string) (int, error) {
 	// 查找推荐码
 	var referral Referral
 	// 从数据库查询推荐码...
+	result := DB.Where("code = ? AND is_active = ?", referralCode, true).First(&referral)
+	if result.Error != nil {
+		return 0, errors.New("无效的推荐码")
+	}
 
 	// 如果找不到推荐码
 	if referral.Id == 0 {
@@ -90,8 +104,8 @@ func UseReferralCode(userId uint, referralCode string) (int, error) {
 	// 检查用户是否已经使用过推荐码
 	var existingUse ReferralUse
 	// 从数据库查询是否已经使用过...
-
-	if existingUse.Id > 0 {
+	result = DB.Where("user_id = ?", userId).First(&existingUse)
+	if result.Error == nil && existingUse.Id > 0 {
 		return 0, errors.New("您已经使用过推荐码")
 	}
 
@@ -108,14 +122,22 @@ func UseReferralCode(userId uint, referralCode string) (int, error) {
 		CreatedAt:     time.Now(),
 	}
 	// 保存到数据库...
-	_ = use // 标记为已使用避免lint警告
+	result = DB.Create(&use)
+	if result.Error != nil {
+		return 0, result.Error
+	}
 
 	// 更新推荐人的推荐次数
 	referral.TotalUsed++
 	// 更新数据库...
+	result = DB.Save(&referral)
+	if result.Error != nil {
+		return 0, result.Error
+	}
 
 	// 给用户增加token
 	// 这里应该有更新用户token余额的逻辑...
+	// 这部分将在service层实现
 
 	return tokensRewarded, nil
 }
@@ -123,40 +145,61 @@ func UseReferralCode(userId uint, referralCode string) (int, error) {
 // GetReferralStat 获取用户的推荐统计信息
 func GetReferralStat(userId uint) (int, int, error) {
 	// 获取总推荐人数
-	// 从数据库统计用户的推荐人数...
-	totalReferred := 5 // 示例数据
+	var totalReferred int64
+	result := DB.Model(&ReferralUse{}).Where("referrer_id = ?", userId).Count(&totalReferred)
+	if result.Error != nil {
+		return 0, 0, result.Error
+	}
 
 	// 获取总奖励token数量 
-	// 从数据库统计用户通过推荐获得的token总量...
-	totalTokensEarned := 1000 // 示例数据
+	var totalTokens int
+	err := DB.Model(&ReferralUse{}).Where("referrer_id = ?", userId).Select("COALESCE(SUM(tokens_rewarded), 0) as total_tokens").Scan(&totalTokens).Error
+	if err != nil {
+		return int(totalReferred), 0, err
+	}
 
-	return totalReferred, totalTokensEarned, nil
+	return int(totalReferred), totalTokens, nil
 }
 
 // GetReferrals 获取用户的推荐记录
 func GetReferrals(userId uint, page, limit int) ([]map[string]interface{}, int, error) {
 	// 计算偏移量
 	offset := (page - 1) * limit
-	_ = offset // 标记为已使用避免lint警告
 
 	// 查询推荐记录
-	// 从数据库查询用户的推荐记录，并关联用户信息...
+	var referrals []ReferralUse
+	result := DB.Where("referrer_id = ?", userId).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&referrals)
+    
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
 	
-	// 示例结果
-	results := []map[string]interface{}{
-		{
-			"id":              34,
-			"user_id":         156,
-			"username":        "user***56",
-			"registered_at":   "2023-05-10T09:25:00Z", 
-			"tokens_rewarded": 200,
-		},
+	// 获取总记录数
+	var totalCount int64
+	DB.Model(&ReferralUse{}).Where("referrer_id = ?", userId).Count(&totalCount)
+	
+	// 转换结果格式，并添加用户信息
+	var results []map[string]interface{}
+	for _, r := range referrals {
+		// 获取被推荐用户信息
+		var userObj User
+		DB.Select("id, username").Where("id = ?", r.UserId).First(&userObj)
+		
+		result := map[string]interface{}{
+			"id":              r.Id,
+			"user_id":         r.UserId,
+			"username":        maskUsername(userObj.Username),
+			"registered_at":   r.UsedAt.Format(time.RFC3339),
+			"tokens_rewarded": r.TokensRewarded,
+		}
+		results = append(results, result)
 	}
 
-	// 获取总记录数
-	totalCount := 5 // 示例数据
-
-	return results, totalCount, nil
+	return results, int(totalCount), nil
 }
 
 // 生成随机推荐码
@@ -172,4 +215,13 @@ func generateRandomCode(length int) string {
 	}
 	
 	return result.String()
+}
+
+// 对用户名进行脱敏处理
+func maskUsername(username string) string {
+	if len(username) <= 3 {
+		return username + "***"
+	}
+	
+	return username[:3] + "***" + username[len(username)-2:]
 } 

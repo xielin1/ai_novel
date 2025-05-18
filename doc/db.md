@@ -10,181 +10,205 @@
 ```sql
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    avatar_url VARCHAR(255),
-    referral_code VARCHAR(20) NOT NULL UNIQUE,
-    token_balance INT NOT NULL DEFAULT 0,
+    username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+    password VARCHAR(255) NOT NULL COMMENT '密码(哈希值)',
+    display_name VARCHAR(50) COMMENT '显示名称',
+    email VARCHAR(100) UNIQUE COMMENT '电子邮箱',
+    role INT NOT NULL DEFAULT 1 COMMENT '角色(1:普通用户，2:管理员)',
+    status INT NOT NULL DEFAULT 1 COMMENT '状态(1:启用，0:禁用)',
+    token VARCHAR(255) COMMENT '身份令牌',
+    github_id VARCHAR(50) COMMENT 'GitHub ID',
+    wechat_id VARCHAR(50) COMMENT '微信ID',
+    token_balance INT NOT NULL DEFAULT 0 COMMENT 'token余额',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    last_login_at TIMESTAMP,
-    status TINYINT NOT NULL DEFAULT 1 COMMENT '1:活跃, 0:禁用',
-    INDEX idx_referral_code (referral_code)
+    INDEX idx_username (username),
+    INDEX idx_email (email),
+    INDEX idx_token (token)
 );
 ```
 
-### 2. 套餐表 (plans)
+### 2. 推荐码表 (referrals)
 
 ```sql
-CREATE TABLE plans (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(50) NOT NULL,
-    description TEXT,
-    price DECIMAL(10, 2) NOT NULL,
-    duration_days INT NOT NULL COMMENT '套餐有效期(天)',
+CREATE TABLE referrals (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL UNIQUE COMMENT '用户ID',
+    code VARCHAR(20) NOT NULL UNIQUE COMMENT '推荐码',
+    total_used INT NOT NULL DEFAULT 0 COMMENT '使用次数',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_code (code),
+    INDEX idx_user_id (user_id)
+);
+```
+
+### 3. 推荐使用记录表 (referral_uses)
+
+```sql
+CREATE TABLE referral_uses (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    referrer_id BIGINT UNSIGNED NOT NULL COMMENT '推荐人ID',
+    user_id BIGINT UNSIGNED NOT NULL UNIQUE COMMENT '被推荐人ID',
+    referral_code VARCHAR(20) NOT NULL COMMENT '使用的推荐码',
+    tokens_rewarded INT NOT NULL COMMENT '奖励的token数量',
+    used_at TIMESTAMP NOT NULL COMMENT '使用时间',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_referrer_id (referrer_id),
+    INDEX idx_user_id (user_id)
+);
+```
+
+### 4. 套餐表 (packages)
+
+```sql
+CREATE TABLE packages (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL COMMENT '套餐名称',
+    description VARCHAR(255) COMMENT '套餐描述',
+    price DECIMAL(10,2) NOT NULL COMMENT '价格',
     monthly_tokens INT NOT NULL COMMENT '每月赠送token数量',
-    is_permanent BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否永久套餐',
+    duration VARCHAR(20) NOT NULL COMMENT '有效期类型(monthly,yearly,permanent)',
+    features TEXT COMMENT '功能列表(JSON字符串)',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    status TINYINT NOT NULL DEFAULT 1 COMMENT '1:可用, 0:下架'
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
 
-### 3. 用户套餐表 (user_plans)
+### 5. 订阅表 (subscriptions)
 
 ```sql
-CREATE TABLE user_plans (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    plan_id INT NOT NULL,
-    start_date TIMESTAMP NOT NULL,
-    end_date TIMESTAMP,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+CREATE TABLE subscriptions (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    package_id BIGINT UNSIGNED NOT NULL COMMENT '套餐ID',
+    status VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '状态(active,expired,cancelled)',
+    start_date TIMESTAMP NOT NULL COMMENT '开始日期',
+    expiry_date TIMESTAMP NOT NULL COMMENT '过期日期',
+    auto_renew BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否自动续费',
+    next_renewal TIMESTAMP COMMENT '下次续费时间',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (plan_id) REFERENCES plans(id),
     INDEX idx_user_id (user_id),
-    INDEX idx_plan_id (plan_id)
+    INDEX idx_package_id (package_id)
 );
 ```
 
-### 4. 项目表 (projects)
+### 6. Token分发记录表 (token_distributions)
+
+```sql
+CREATE TABLE token_distributions (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    subscription_id BIGINT UNSIGNED COMMENT '订阅ID',
+    package_id BIGINT UNSIGNED COMMENT '套餐ID',
+    amount INT NOT NULL COMMENT '分发数量',
+    distributed_at TIMESTAMP NOT NULL COMMENT '分发时间',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id)
+);
+```
+
+### 7. 项目表 (projects)
 
 ```sql
 CREATE TABLE projects (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
+    user_id INT NOT NULL COMMENT '用户ID',
+    username VARCHAR(50) NOT NULL COMMENT '用户名',
+    title VARCHAR(255) NOT NULL COMMENT '项目标题',
+    description TEXT COMMENT '项目描述',
     genre VARCHAR(50) COMMENT '作品风格/类型',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    last_edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    last_edited_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后编辑时间',
     INDEX idx_user_id (user_id),
-    INDEX idx_created_at (created_at)
+    INDEX idx_title (title)
 );
 ```
 
-### 5. 大纲内容表 (outlines)
+### 8. 大纲内容表 (outlines)
 
 ```sql
 CREATE TABLE outlines (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    project_id BIGINT NOT NULL,
-    content TEXT NOT NULL,
-    current_version INT NOT NULL DEFAULT 1,
+    project_id INT NOT NULL COMMENT '项目ID',
+    content TEXT NOT NULL COMMENT '大纲内容',
+    current_version INT NOT NULL DEFAULT 1 COMMENT '当前版本号',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id),
     INDEX idx_project_id (project_id)
 );
 ```
 
-### 6. 版本历史表 (versions)
+### 9. 版本历史表 (versions)
 
 ```sql
 CREATE TABLE versions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    outline_id BIGINT NOT NULL,
-    version_number INT NOT NULL,
-    content TEXT NOT NULL,
-    is_ai_generated BOOLEAN NOT NULL DEFAULT FALSE,
+    outline_id INT NOT NULL COMMENT '大纲ID',
+    version_number INT NOT NULL COMMENT '版本号',
+    content TEXT NOT NULL COMMENT '内容',
+    is_ai_generated BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否AI生成',
     ai_style VARCHAR(50) COMMENT 'AI续写风格',
     word_limit INT COMMENT 'AI续写字数限制',
-    tokens_used INT COMMENT '使用的token数',
+    tokens_used INT COMMENT '使用的token数量',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (outline_id) REFERENCES outlines(id),
     INDEX idx_outline_id (outline_id),
     UNIQUE KEY unique_outline_version (outline_id, version_number)
 );
 ```
 
-### 7. Token记录表 (token_records)
+### 10. 文件表 (files)
 
 ```sql
-CREATE TABLE token_records (
+CREATE TABLE files (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    amount INT NOT NULL COMMENT '正值为增加,负值为消费',
-    balance INT NOT NULL COMMENT '变动后余额',
-    record_type TINYINT NOT NULL COMMENT '1:套餐赠送, 2:推荐奖励, 3:续写消费, 4:充值',
-    related_id BIGINT COMMENT '相关记录ID',
-    description VARCHAR(255),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    INDEX idx_user_id (user_id),
-    INDEX idx_created_at (created_at)
+    filename VARCHAR(255) NOT NULL COMMENT '文件名',
+    description TEXT COMMENT '文件描述',
+    uploader VARCHAR(50) COMMENT '上传者用户名',
+    uploader_id INT NOT NULL COMMENT '上传者ID',
+    link VARCHAR(255) UNIQUE NOT NULL COMMENT '文件链接',
+    upload_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+    download_counter INT NOT NULL DEFAULT 0 COMMENT '下载次数',
+    INDEX idx_filename (filename),
+    INDEX idx_uploader_id (uploader_id),
+    INDEX idx_link (link)
 );
 ```
 
-### 8. 推荐记录表 (referrals)
+### 11. 系统选项表 (options)
 
 ```sql
-CREATE TABLE referrals (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    referrer_id BIGINT NOT NULL COMMENT '推荐人ID',
-    referred_id BIGINT NOT NULL COMMENT '被推荐人ID',
-    reward_tokens INT NOT NULL DEFAULT 0 COMMENT '获得的奖励token',
-    is_rewarded BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (referrer_id) REFERENCES users(id),
-    FOREIGN KEY (referred_id) REFERENCES users(id),
-    INDEX idx_referrer_id (referrer_id),
-    INDEX idx_referred_id (referred_id),
-    UNIQUE KEY unique_referral (referred_id)
-);
-```
-
-### 9. 导出记录表 (exports)
-
-```sql
-CREATE TABLE exports (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    project_id BIGINT NOT NULL,
-    file_format VARCHAR(20) NOT NULL COMMENT 'TXT, DOCX, PDF等',
-    file_url VARCHAR(255),
-    file_size INT COMMENT '文件大小(KB)',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (project_id) REFERENCES projects(id),
-    INDEX idx_user_id (user_id),
-    INDEX idx_project_id (project_id)
+CREATE TABLE options (
+    `key` VARCHAR(255) PRIMARY KEY COMMENT '选项键',
+    `value` TEXT COMMENT '选项值'
 );
 ```
 
 ## 主要关系说明
 
-1. 一个用户(users)可以有多个项目(projects)
-2. 一个项目(projects)有一个大纲(outlines)
-3. 一个大纲(outlines)有多个版本历史(versions)
-4. 一个用户(users)可以购买多个套餐(plans)，通过user_plans关联
-5. 一个用户(users)可以推荐多个新用户，通过referrals关联
-6. 用户的token变动记录在token_records表中
+1. 一个用户(users)可以有一个推荐码(referrals)
+2. 一个用户(users)可以被另一个用户推荐(referral_uses)
+3. 一个用户(users)可以订阅多个套餐(packages)，通过subscriptions表关联
+4. 一个用户(users)可以获得多次token分发(token_distributions)
+5. 一个用户(users)可以创建多个项目(projects)
+6. 一个项目(projects)有一个大纲(outlines)
+7. 一个大纲(outlines)有多个版本历史(versions)
+8. 系统设置存储在options表中
 
 ## 索引设计考虑
 
-1. 用户表使用用户名、邮箱作为唯一索引，推荐码添加普通索引方便查询
-2. 项目表和大纲表按用户ID和项目ID建立索引，方便按用户查询项目
-3. 版本历史表按大纲ID建立索引，同时维护版本号唯一性
-4. token记录表和推荐记录表按用户ID建立索引，方便查询用户相关记录
+1. 用户表对username、email和token添加索引，提高查询效率
+2. 推荐码表对code添加索引，方便查询
+3. 项目表对user_id添加索引，方便查询用户的所有项目
+4. 大纲表和版本历史表对相关ID添加索引，优化关联查询
+5. 所有关联表都添加了相应的外键索引，提高关联查询效率
 
 ## 数据维护建议
 
 1. 定期备份数据库，特别是用户内容相关表
 2. 对于长期不活跃的项目，可考虑归档处理
-3. 对于token_records表，可能需要定期归档历史数据，保持表性能
+3. 对于token_distributions表，可能需要定期归档历史数据，保持表性能
+4. 在实现中注意处理数据类型映射，特别是Go中的uint和数据库中的BIGINT UNSIGNED的映射关系
