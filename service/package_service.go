@@ -3,39 +3,18 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"gin-template/define"
 	"gin-template/model"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-// 套餐响应结构
-type PackageResponse struct {
-	ID            uint     `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	Price         float64  `json:"price"`
-	MonthlyTokens int      `json:"monthly_tokens"`
-	Duration      string   `json:"duration"`    // monthly, yearly, permanent
-	Features      []string `json:"features"`
-}
-
-// 订阅响应结构
-type SubscriptionResponse struct {
-	PackageID    uint   `json:"package_id"`
-	UserID       uint   `json:"user_id"`
-	Status       string `json:"status"`        // active, expired, cancelled
-	StartDate    string `json:"start_date"`
-	ExpiryDate   string `json:"expiry_date"`
-	AutoRenew    bool   `json:"auto_renew"`
-	NextRenewal  string `json:"next_renewal_date,omitempty"`
-}
-
 // 获取所有套餐
-func GetAllPackages() ([]PackageResponse, error) {
+func GetAllPackages() (define.PackageResponse, error) {
 	// 添加免费版套餐
 	freeFeatures := []string{"基础AI续写功能", "每月500个免费Token", "社区支持"}
-	freePackage := PackageResponse{
+	freePackage := define.PackageInfo{
 		ID:            0,
 		Name:          "免费版",
 		Description:   "基础功能免费体验",
@@ -47,7 +26,7 @@ func GetAllPackages() ([]PackageResponse, error) {
 	
 	// 这里应从数据库中获取套餐信息
 	// 目前使用硬编码的数据，实际应从数据库中查询
-	packages := []PackageResponse{
+	packages := []define.PackageInfo{
 		freePackage,
 		{
 			ID:            1,
@@ -78,7 +57,7 @@ func GetAllPackages() ([]PackageResponse, error) {
 		},
 	}
 	
-	return packages, nil
+	return define.PackageResponse{Packages: packages}, nil
 }
 
 // 验证套餐ID是否存在
@@ -106,22 +85,22 @@ func ValidatePaymentMethod(method string) bool {
 }
 
 // 创建订阅
-func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string) (map[string]interface{}, error) {
+func CreatePackageSubscription(userID uint, request define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
 	// 验证套餐ID
-	if !ValidatePackageID(packageID) {
-		return nil, fmt.Errorf("无效的套餐ID")
+	if !ValidatePackageID(request.PackageID) {
+		return define.SubscriptionResponse{}, fmt.Errorf("无效的套餐ID")
 	}
 	
 	// 验证支付方式
-	if !ValidatePaymentMethod(paymentMethod) {
-		return nil, fmt.Errorf("不支持的支付方式")
+	if !ValidatePaymentMethod(request.PaymentMethod) {
+		return define.SubscriptionResponse{}, fmt.Errorf("不支持的支付方式")
 	}
 	
 	// 获取套餐信息
 	var packageInfo model.Package
-	if packageID != 0 {
-		if err := model.DB.First(&packageInfo, packageID).Error; err != nil {
-			return nil, err
+	if request.PackageID != 0 {
+		if err := model.DB.First(&packageInfo, request.PackageID).Error; err != nil {
+			return define.SubscriptionResponse{}, err
 		}
 	} else {
 		packageInfo = model.FreePackage
@@ -138,7 +117,7 @@ func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string
 	// 创建订阅记录
 	subscription := model.Subscription{
 		UserId:     userID,
-		PackageId:  packageID,
+		PackageId:  request.PackageID,
 		Status:     "active",
 		StartDate:  time.Now(),
 		ExpiryDate: validUntil,
@@ -147,11 +126,11 @@ func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string
 	
 	// 保存订阅记录
 	if err := model.DB.Create(&subscription).Error; err != nil {
-		return nil, err
+		return define.SubscriptionResponse{}, err
 	}
 	
 	// 生成订单号
-	orderID := fmt.Sprintf("ORD%s%03d", time.Now().Format("20060102"), packageID)
+	orderID := fmt.Sprintf("ORD%s%03d", time.Now().Format("20060102"), request.PackageID)
 	
 	// 生成唯一交易ID，用于幂等性控制
 	transactionUUID := uuid.New().String()
@@ -181,25 +160,25 @@ func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string
 		tokenBalance = userToken.Balance
 	}
 	
-	response := map[string]interface{}{
-		"order_id":       orderID,
-		"package_name":   packageInfo.Name,
-		"amount":         packageInfo.Price,
-		"payment_status": "completed",
-		"valid_until":    validUntil.Format(time.RFC3339),
-		"tokens_awarded": packageInfo.MonthlyTokens,
-		"token_balance":  tokenBalance,
+	response := define.SubscriptionResponse{
+		OrderID:       orderID,
+		PackageName:   packageInfo.Name,
+		Amount:        packageInfo.Price,
+		PaymentStatus: "completed",
+		ValidUntil:    validUntil.Format(time.RFC3339),
+		TokensAwarded: packageInfo.MonthlyTokens,
+		TokenBalance:  tokenBalance,
 	}
 	
 	return response, nil
 }
 
 // 获取用户当前套餐信息
-func GetUserCurrentPackageInfo(userID uint) (map[string]interface{}, error) {
+func GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
 	// 从数据库获取用户的订阅信息
 	subscription, packageInfo, err := model.GetUserCurrentPackage(userID)
 	if err != nil {
-		return nil, err
+		return define.CurrentPackageResponse{}, err
 	}
 	
 	// 格式化日期为字符串
@@ -218,28 +197,43 @@ func GetUserCurrentPackageInfo(userID uint) (map[string]interface{}, error) {
 		json.Unmarshal([]byte(packageInfo.Features), &features)
 	}
 	
-	response := map[string]interface{}{
-		"package": map[string]interface{}{
-			"id":              packageInfo.Id,
-			"name":            packageInfo.Name,
-			"description":     packageInfo.Description,
-			"price":           packageInfo.Price,
-			"monthly_tokens":  packageInfo.MonthlyTokens,
-			"duration":        packageInfo.Duration,
-			"features":        features,
-		},
-		"subscription_status": subscription.Status,
-		"start_date":          startDate,
-		"expiry_date":         expiryDate,
-		"auto_renew":          subscription.AutoRenew,
-		"next_renewal_date":   nextRenewalDate,
+	// 创建PackageInfo
+	pkg := define.PackageInfo{
+		ID:            packageInfo.Id,
+		Name:          packageInfo.Name,
+		Description:   packageInfo.Description,
+		Price:         packageInfo.Price,
+		MonthlyTokens: packageInfo.MonthlyTokens,
+		Duration:      packageInfo.Duration,
+		Features:      features,
+	}
+	
+	// 创建SubscriptionInfo
+	subInfo := define.SubscriptionInfo{
+		PackageID:   packageInfo.Id,
+		UserID:      userID,
+		Status:      subscription.Status,
+		StartDate:   startDate,
+		ExpiryDate:  expiryDate,
+		AutoRenew:   subscription.AutoRenew,
+		NextRenewal: nextRenewalDate,
+	}
+	
+	response := define.CurrentPackageResponse{
+		Package:            pkg,
+		Subscription:       subInfo,
+		SubscriptionStatus: subscription.Status,
+		StartDate:          startDate,
+		ExpiryDate:         expiryDate,
+		AutoRenew:          subscription.AutoRenew,
+		NextRenewalDate:    nextRenewalDate,
 	}
 	
 	return response, nil
 }
 
 // 取消自动续费
-func CancelPackageRenewal(userID uint) (map[string]interface{}, error) {
+func CancelPackageRenewal(userID uint) (define.CancelRenewalResponse, error) {
 	// 获取用户当前有效订阅
 	var subscription model.Subscription
 	result := model.DB.Where("user_id = ? AND status = ? AND expiry_date > ?", 
@@ -248,25 +242,25 @@ func CancelPackageRenewal(userID uint) (map[string]interface{}, error) {
 		First(&subscription)
 	
 	if result.Error != nil {
-		return nil, result.Error
+		return define.CancelRenewalResponse{}, result.Error
 	}
 	
 	// 取消自动续费
 	subscription.AutoRenew = false
 	if err := model.DB.Save(&subscription).Error; err != nil {
-		return nil, err
+		return define.CancelRenewalResponse{}, err
 	}
 	
 	// 获取套餐信息
 	var packageInfo model.Package
 	if err := model.DB.First(&packageInfo, subscription.PackageId).Error; err != nil {
-		return nil, err
+		return define.CancelRenewalResponse{}, err
 	}
 	
-	response := map[string]interface{}{
-		"package_name": packageInfo.Name,
-		"expiry_date":  subscription.ExpiryDate.Format(time.RFC3339),
-		"auto_renew":   false,
+	response := define.CancelRenewalResponse{
+		PackageName: packageInfo.Name,
+		ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+		AutoRenew:   false,
 	}
 	
 	return response, nil

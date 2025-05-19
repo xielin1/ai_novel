@@ -5,8 +5,8 @@ import (
 	"gin-template/common"
 	"gin-template/define"
 	"gin-template/model"
+	"gin-template/repository/db"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,12 +20,19 @@ var tokenService TokenService
 
 // InitServices 初始化服务
 func InitServices() {
-	tokenService = NewTokenService()
+	common.SysLog("[Service] 开始初始化所有服务")
+	
+	// 初始化数据库仓库
+	tokenRepo := db.NewTokenRepository(model.DB)
+	reconRepo := db.NewTokenReconciliationRepository(model.DB)
+	
+	// 初始化TokenService
+	tokenService = NewTokenService(tokenRepo)
 	
 	// 初始化Token对账服务
-	InitReconciliationService()
+	InitReconciliationService(tokenRepo, reconRepo)
 	
-	log.Println("所有服务初始化完成")
+	common.SysLog("[Service] 所有服务初始化完成")
 }
 
 // ParseOutlineFile 解析上传的大纲文件内容
