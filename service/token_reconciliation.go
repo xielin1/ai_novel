@@ -255,13 +255,13 @@ func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID uint, currentB
 	// 使用TokenService执行调整
 	// 如果是增加余额
 	if diff > 0 {
-		_, err := tokenService.CreditToken(userID, diff, transactionUUID, transactionType, description, "system", "reconciliation")
+		_, err := GetTokenService().CreditToken(userID, diff, transactionUUID, transactionType, description, "system", "reconciliation")
 		if err != nil {
 			reconciliationLogError("修复用户 %d 余额失败 (增加): %v", userID, err)
 			return false
 		}
 	} else if diff < 0 { // 如果是减少余额
-		_, err := tokenService.DebitToken(userID, -diff, transactionUUID, transactionType, description, "system", "reconciliation")
+		_, err := GetTokenService().DebitToken(userID, -diff, transactionUUID, transactionType, description, "system", "reconciliation")
 		if err != nil {
 			reconciliationLogError("修复用户 %d 余额失败 (减少): %v", userID, err)
 			return false

@@ -51,6 +51,20 @@ func logError(format string, args ...interface{}) {
 	common.SysError(tokenServiceLogPrefix + message)
 }
 
+// 全局TokenService实例
+var tokenService TokenService
+
+// SetTokenService 设置全局TokenService实例
+func SetTokenService(service TokenService) {
+	tokenService = service
+	logInfo("TokenService已通过依赖注入设置")
+}
+
+// GetTokenService 获取全局TokenService实例
+func GetTokenService() TokenService {
+	return tokenService
+}
+
 // NewTokenService 创建一个新的 TokenService 实例
 func NewTokenService(tokenRepo *db.TokenRepository) TokenService {
 	logInfo("初始化TokenService")

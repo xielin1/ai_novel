@@ -139,7 +139,7 @@ func CreatePackageSubscription(userID uint, request define.CreateSubscriptionReq
 	tokensToAward := int64(packageInfo.MonthlyTokens)
 	
 	// 使用TokenService添加Token
-	userToken, err := tokenService.CreditToken(
+	userToken, err := GetTokenService().CreditToken(
 		userID,
 		tokensToAward,
 		transactionUUID,

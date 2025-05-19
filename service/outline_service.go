@@ -15,9 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// 全局TokenService实例
-var tokenService TokenService
-
 // InitServices 初始化服务
 func InitServices() {
 	common.SysLog("[Service] 开始初始化所有服务")
@@ -27,7 +24,8 @@ func InitServices() {
 	reconRepo := db.NewTokenReconciliationRepository(model.DB)
 	
 	// 初始化TokenService
-	tokenService = NewTokenService(tokenRepo)
+	ts := NewTokenService(tokenRepo)
+	SetTokenService(ts)
 	
 	// 初始化Token对账服务
 	InitReconciliationService(tokenRepo, reconRepo)
@@ -173,7 +171,7 @@ func GenerateOutlineWithAI(userId uint, projectId int, content string, style str
 	projectIdStr := strconv.Itoa(projectId)
 	
 	// 使用TokenService扣减用户Token
-	userToken, err := tokenService.DebitToken(
+	userToken, err := GetTokenService().DebitToken(
 		userId, 
 		int64(tokensUsed), 
 		transactionUUID, 

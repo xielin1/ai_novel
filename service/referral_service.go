@@ -167,7 +167,7 @@ func (s *ReferralService) UseReferralCode(userId uint, code string) (define.UseR
 	userTransactionUUID := uuid.New().String()
 
 	// 为当前用户（被推荐人）增加Token - 使用TokenService确保一致性
-	userToken, err := tokenService.CreditToken(
+	userToken, err := GetTokenService().CreditToken(
 		userId,
 		int64(tokensRewarded),
 		userTransactionUUID,
