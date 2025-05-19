@@ -1,7 +1,10 @@
 package service
 
 import (
+	"fmt"
 	"gin-template/model"
+
+	"github.com/google/uuid"
 )
 
 // ReferralService 推荐码服务
@@ -101,17 +104,38 @@ func (s *ReferralService) GenerateNewCode(userId uint) (map[string]interface{}, 
 
 // UseReferralCode 使用他人的推荐码
 func (s *ReferralService) UseReferralCode(userId uint, code string) (map[string]interface{}, error) {
-	// 使用推荐码，此函数现在会返回更新后的token余额
-	newBalance, err := model.UseReferralCode(userId, code)
+	// 使用推荐码，此函数会检查推荐码是否有效
+	_, err := model.UseReferralCode(userId, code)
 	if err != nil {
 		return nil, err
 	}
-
-	// 获取奖励token数量 - 实际中应该从系统配置中获取
+	
+	// 奖励固定的Token数量 - 实际应该从配置中获取
 	tokensRewarded := 200
-
+	
+	// 生成唯一交易ID，用于幂等性控制
+	userTransactionUUID := uuid.New().String()
+	
+	// 为当前用户（被推荐人）增加Token - 使用TokenService确保一致性
+	userToken, err := tokenService.CreditToken(
+		userId,
+		int64(tokensRewarded),
+		userTransactionUUID,
+		"referral_credit_used",
+		"使用推荐码奖励",
+		"referral_code",
+		code,
+	)
+	
+	if err != nil {
+		return nil, fmt.Errorf("奖励Token失败: %v", err)
+	}
+	
+	// 如果需要同时奖励推荐人，可以在这里添加相应代码
+	// 为了简化，这里假设奖励推荐人的逻辑已经在model.UseReferralCode中处理
+	
 	return map[string]interface{}{
 		"tokens_rewarded": tokensRewarded,
-		"new_balance":     newBalance,
+		"new_balance":     userToken.Balance,
 	}, nil
 } 

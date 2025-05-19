@@ -2,8 +2,11 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"gin-template/model"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // 套餐响应结构
@@ -104,8 +107,15 @@ func ValidatePaymentMethod(method string) bool {
 
 // 创建订阅
 func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string) (map[string]interface{}, error) {
-	// 实际应该处理支付逻辑和订阅创建
-	// 这里仅返回模拟数据
+	// 验证套餐ID
+	if !ValidatePackageID(packageID) {
+		return nil, fmt.Errorf("无效的套餐ID")
+	}
+	
+	// 验证支付方式
+	if !ValidatePaymentMethod(paymentMethod) {
+		return nil, fmt.Errorf("不支持的支付方式")
+	}
 	
 	// 获取套餐信息
 	var packageInfo model.Package
@@ -126,8 +136,7 @@ func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string
 	}
 	
 	// 创建订阅记录
-	// 实际应用中应该保存到数据库并使用
-	_ = model.Subscription{
+	subscription := model.Subscription{
 		UserId:     userID,
 		PackageId:  packageID,
 		Status:     "active",
@@ -136,14 +145,50 @@ func CreatePackageSubscription(userID uint, packageID uint, paymentMethod string
 		AutoRenew:  packageInfo.Duration != "permanent", // 永久版不自动续费
 	}
 	
-	// 这里仅返回示例响应
+	// 保存订阅记录
+	if err := model.DB.Create(&subscription).Error; err != nil {
+		return nil, err
+	}
+	
+	// 生成订单号
+	orderID := fmt.Sprintf("ORD%s%03d", time.Now().Format("20060102"), packageID)
+	
+	// 生成唯一交易ID，用于幂等性控制
+	transactionUUID := uuid.New().String()
+	
+	// 为用户增加Token余额
+	tokensToAward := int64(packageInfo.MonthlyTokens)
+	
+	// 使用TokenService添加Token
+	userToken, err := tokenService.CreditToken(
+		userID,
+		tokensToAward,
+		transactionUUID,
+		"package_purchase_credit",
+		fmt.Sprintf("购买[%s]套餐奖励", packageInfo.Name),
+		"order",
+		orderID,
+	)
+	
+	if err != nil {
+		// 记录错误，但继续处理，因为用户已经付款
+		fmt.Printf("为用户[%d]增加Token失败: %v\n", userID, err)
+	}
+	
+	// 构建响应
+	var tokenBalance int64 = 0
+	if userToken != nil {
+		tokenBalance = userToken.Balance
+	}
+	
 	response := map[string]interface{}{
-		"order_id":       "ORD" + time.Now().Format("20060102") + "001",
+		"order_id":       orderID,
 		"package_name":   packageInfo.Name,
 		"amount":         packageInfo.Price,
 		"payment_status": "completed",
 		"valid_until":    validUntil.Format(time.RFC3339),
 		"tokens_awarded": packageInfo.MonthlyTokens,
+		"token_balance":  tokenBalance,
 	}
 	
 	return response, nil

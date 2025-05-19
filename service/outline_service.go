@@ -6,11 +6,27 @@ import (
 	"gin-template/define"
 	"gin-template/model"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+// 全局TokenService实例
+var tokenService TokenService
+
+// InitServices 初始化服务
+func InitServices() {
+	tokenService = NewTokenService()
+	
+	// 初始化Token对账服务
+	InitReconciliationService()
+	
+	log.Println("所有服务初始化完成")
+}
 
 // ParseOutlineFile 解析上传的大纲文件内容
 func ParseOutlineFile(filePath string, fileExt string) (string, error) {
@@ -97,7 +113,7 @@ func GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
 }
 
 // GenerateOutlineWithAI 使用AI生成大纲内容
-func GenerateOutlineWithAI(projectId int, content string, style string, wordLimit int) (map[string]interface{}, error) {
+func GenerateOutlineWithAI(userId uint, projectId int, content string, style string, wordLimit int) (map[string]interface{}, error) {
 	// 构造AI请求
 	systemPrompt := "你是一个专业的内容创作助手，擅长根据提供的大纲进行续写和扩展。"
 	if style != "" {
@@ -119,6 +135,9 @@ func GenerateOutlineWithAI(projectId int, content string, style string, wordLimi
 		Temperature:  0.7,             // 创意性参数
 	}
 	
+	// 生成唯一交易ID，用于幂等性控制
+	transactionUUID := uuid.New().String()
+	
 	// 调用AI服务进行续写
 	openaiResp, err := GenerateAICompletion(openaiReq)
 	if err != nil {
@@ -128,7 +147,7 @@ func GenerateOutlineWithAI(projectId int, content string, style string, wordLimi
 	// 获取生成内容
 	aiGeneratedContent := openaiResp.Content
 	tokensUsed := openaiResp.TokensUsed
-	
+
 	// 保存大纲内容，创建新版本，标记为AI生成
 	_, err = model.SaveOutline(projectId, content+"\n\n"+aiGeneratedContent, true, style, wordLimit, tokensUsed)
 	if err != nil {
@@ -142,9 +161,35 @@ func GenerateOutlineWithAI(projectId int, content string, style string, wordLimi
 		project.Update()
 	}
 	
-	// 获取用户Token余额
-	tokenBalance := 1000 // 假设初始余额为1000，实际应从用户账户中获取
-	tokenBalance -= tokensUsed
+	// 扣除用户Token
+	description := fmt.Sprintf("项目[%d]大纲AI续写消耗", projectId)
+	projectIdStr := strconv.Itoa(projectId)
+	
+	// 使用TokenService扣减用户Token
+	userToken, err := tokenService.DebitToken(
+		userId, 
+		int64(tokensUsed), 
+		transactionUUID, 
+		"ai_generation_debit", 
+		description, 
+		"project", 
+		projectIdStr,
+	)
+	
+	if err != nil {
+		// 如果扣款失败但内容已生成，记录错误日志但仍然返回生成的内容
+		// 在实际应用中，可能需要更复杂的错误处理策略
+		fmt.Printf("扣减用户Token失败: %v\n", err)
+		return map[string]interface{}{
+			"content":       aiGeneratedContent,
+			"tokens_used":   tokensUsed,
+			"token_balance": 0, // 余额获取失败
+			"error":         "Token扣减失败，请联系客服",
+		}, nil
+	}
+	
+	// 获取用户最新Token余额
+	tokenBalance := userToken.Balance
 	
 	return map[string]interface{}{
 		"content":       aiGeneratedContent,
