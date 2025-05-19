@@ -1,6 +1,7 @@
 package service
 
 import (
+	"gin-template/common"
 	"fmt"
 	"gin-template/model"
 
@@ -20,6 +21,7 @@ func (s *ReferralService) GetReferralCode(userId uint) (map[string]interface{}, 
 
 	// 如果用户没有推荐码，则创建一个
 	if referral == nil || err != nil {
+		common.SysLog("[referral]code not exist,generate referral code")
 		referral, err = model.GenerateNewReferralCode(userId)
 		if err != nil {
 			return nil, err
@@ -32,7 +34,7 @@ func (s *ReferralService) GetReferralCode(userId uint) (map[string]interface{}, 
 		return nil, err
 	}
 
-	// 构造分享URL
+	//todo 构造分享URL
 	shareURL := "https://example.com/register?ref=" + referral.Code
 
 	return map[string]interface{}{
@@ -109,13 +111,13 @@ func (s *ReferralService) UseReferralCode(userId uint, code string) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 奖励固定的Token数量 - 实际应该从配置中获取
 	tokensRewarded := 200
-	
+
 	// 生成唯一交易ID，用于幂等性控制
 	userTransactionUUID := uuid.New().String()
-	
+
 	// 为当前用户（被推荐人）增加Token - 使用TokenService确保一致性
 	userToken, err := tokenService.CreditToken(
 		userId,
@@ -126,16 +128,16 @@ func (s *ReferralService) UseReferralCode(userId uint, code string) (map[string]
 		"referral_code",
 		code,
 	)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("奖励Token失败: %v", err)
 	}
-	
+
 	// 如果需要同时奖励推荐人，可以在这里添加相应代码
 	// 为了简化，这里假设奖励推荐人的逻辑已经在model.UseReferralCode中处理
-	
+
 	return map[string]interface{}{
 		"tokens_rewarded": tokensRewarded,
 		"new_balance":     userToken.Balance,
 	}, nil
-} 
+}
