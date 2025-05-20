@@ -1,4 +1,4 @@
-package db
+package repository
 
 import (
 	"gin-template/model"
@@ -29,12 +29,12 @@ func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID uint, cu
 		Description:       description,
 		CreatedAt:         time.Now(),
 	}
-	
+
 	err := r.DB.Create(record).Error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return record, nil
 }
 
@@ -52,60 +52,60 @@ func (r *TokenReconciliationRepository) UpdateReconciliationRecordAsFixed(record
 // GetRecentReconciliationRecords 获取最近的对账记录
 func (r *TokenReconciliationRepository) GetRecentReconciliationRecords(limit int) ([]model.TokenReconciliationRecord, error) {
 	var records []model.TokenReconciliationRecord
-	
+
 	if limit <= 0 {
 		limit = 100
 	}
-	
+
 	err := r.DB.Order("created_at DESC").Limit(limit).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return records, nil
 }
 
 // GetUserReconciliationRecords 获取用户的对账记录
 func (r *TokenReconciliationRepository) GetUserReconciliationRecords(userID uint, limit int) ([]model.TokenReconciliationRecord, error) {
 	var records []model.TokenReconciliationRecord
-	
+
 	if limit <= 0 {
 		limit = 50
 	}
-	
+
 	err := r.DB.Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).
 		Find(&records).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return records, nil
 }
 
 // GetUnfixedReconciliationRecords 获取未修复的对账记录
 func (r *TokenReconciliationRepository) GetUnfixedReconciliationRecords(limit int) ([]model.TokenReconciliationRecord, error) {
 	var records []model.TokenReconciliationRecord
-	
+
 	if limit <= 0 {
 		limit = 100
 	}
-	
+
 	err := r.DB.Where("is_fixed = ?", false).
 		Order("created_at DESC").
 		Limit(limit).
 		Find(&records).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return records, nil
 }
 
 // EnsureTokenReconciliationTable 确保TokenReconciliationRecord表存在
 func (r *TokenReconciliationRepository) EnsureTokenReconciliationTable() error {
 	return r.DB.AutoMigrate(&model.TokenReconciliationRecord{})
-} 
+}

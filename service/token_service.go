@@ -4,36 +4,36 @@ import (
 	"fmt"
 	"gin-template/common"
 	"gin-template/model"
-	"gin-template/repository/db"
+	"gin-template/repository"
 )
 
 // TokenService 定义了Token管理的核心接口
 type TokenService interface {
 	// CreditToken 给用户增加Token
 	CreditToken(userID uint, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error)
-	
+
 	// DebitToken 扣除用户Token
 	DebitToken(userID uint, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error)
-	
+
 	// GetBalance 获取用户当前Token余额
 	GetBalance(userID uint) (int64, error)
-	
+
 	// GetUserToken 获取用户Token账户详情
 	GetUserToken(userID uint) (*model.UserToken, error)
-	
+
 	// InitUserTokenAccount 初始化用户的Token账户
 	InitUserTokenAccount(userID uint, initialBalance int64) (*model.UserToken, error)
-	
+
 	// GetTransactionByUUID 根据UUID获取交易记录
 	GetTransactionByUUID(transactionUUID string) (*model.TokenTransaction, error)
-	
+
 	// GetUserTransactions 获取用户交易记录
 	GetUserTransactions(userID uint, page, limit int) ([]model.TokenTransaction, int64, error)
 }
 
 // tokenServiceImpl 是 TokenService 的具体实现
-type tokenServiceImpl struct{
-	tokenRepo *db.TokenRepository
+type tokenServiceImpl struct {
+	tokenRepo *repository.TokenRepository
 }
 
 // 日志前缀，方便区分不同服务的日志
@@ -66,7 +66,7 @@ func GetTokenService() TokenService {
 }
 
 // NewTokenService 创建一个新的 TokenService 实例
-func NewTokenService(tokenRepo *db.TokenRepository) TokenService {
+func NewTokenService(tokenRepo *repository.TokenRepository) TokenService {
 	logInfo("初始化TokenService")
 	return &tokenServiceImpl{
 		tokenRepo: tokenRepo,
@@ -116,15 +116,15 @@ func (s *tokenServiceImpl) CreditToken(userID uint, amount int64, transactionUUI
 		logError("增加Token金额必须为正数，用户: %d, 金额: %d", userID, amount)
 		return nil, fmt.Errorf("增加金额必须为正数")
 	}
-	
+
 	logInfo("尝试为用户 %d 增加 %d Token, 交易ID: %s, 类型: %s", userID, amount, transactionUUID, transactionType)
-	
+
 	userToken, err := s.tokenRepo.CreditUserToken(userID, amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
 	if err != nil {
 		logError("为用户 %d 增加Token失败: %v", userID, err)
 		return nil, err
 	}
-	
+
 	logInfo("用户 %d Token增加成功，新余额: %d", userID, userToken.Balance)
 	return userToken, nil
 }
@@ -135,15 +135,15 @@ func (s *tokenServiceImpl) DebitToken(userID uint, amount int64, transactionUUID
 		logError("扣减Token金额必须为正数，用户: %d, 金额: %d", userID, amount)
 		return nil, fmt.Errorf("扣减金额必须为正数")
 	}
-	
+
 	logInfo("尝试从用户 %d 扣减 %d Token, 交易ID: %s, 类型: %s", userID, amount, transactionUUID, transactionType)
-	
+
 	userToken, err := s.tokenRepo.DebitUserToken(userID, amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
 	if err != nil {
 		logError("从用户 %d 扣减Token失败: %v", userID, err)
 		return nil, err
 	}
-	
+
 	logInfo("用户 %d Token扣减成功，新余额: %d", userID, userToken.Balance)
 	return userToken, nil
 }
@@ -158,4 +158,4 @@ func (s *tokenServiceImpl) GetUserTransactions(userID uint, page, limit int) ([]
 	}
 	logInfo("成功获取用户 %d 的交易记录，共 %d 条", userID, total)
 	return transactions, total, nil
-} 
+}

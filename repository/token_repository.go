@@ -1,4 +1,4 @@
-package db
+package repository
 
 import (
 	"errors"
@@ -42,12 +42,12 @@ func (r *TokenRepository) InitUserTokenAccount(userID uint, initialBalance int64
 		Balance: initialBalance,
 		Version: 1,
 	}
-	
+
 	err := r.DB.FirstOrCreate(userToken, model.UserToken{UserID: userID}).Error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return userToken, nil
 }
 
@@ -66,9 +66,9 @@ func (r *TokenRepository) GetTransactionByUUID(transactionUUID string) (*model.T
 
 // ModifyTokenBalanceWithTransaction 在事务中修改用户Token余额
 // amount 为正表示增加，为负表示减少
-func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID uint, amount int64, transactionUUID string, 
+func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID uint, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
-	
+
 	// 1. 使用悲观锁获取用户Token信息
 	var userToken model.UserToken
 	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("user_id = ?", userID).First(&userToken).Error; err != nil {
@@ -77,15 +77,15 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 		}
 		return nil, err
 	}
-	
+
 	// 2. 对于扣减操作，检查余额是否充足
 	if amount < 0 && userToken.Balance < -amount {
 		return nil, fmt.Errorf("用户 %d 余额不足: 当前 %d, 尝试扣减 %d", userID, userToken.Balance, -amount)
 	}
-	
+
 	balanceBefore := userToken.Balance
 	balanceAfter := userToken.Balance + amount
-	
+
 	// 3. 使用乐观锁更新用户余额
 	result := tx.Model(&model.UserToken{}).
 		Where("user_id = ? AND version = ?", userID, userToken.Version).
@@ -94,15 +94,15 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 			"version":    userToken.Version + 1,
 			"updated_at": time.Now(),
 		})
-	
+
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	
+
 	if result.RowsAffected == 0 {
 		return nil, errors.New("更新Token余额失败，可能发生并发冲突")
 	}
-	
+
 	// 4. 创建交易记录
 	transaction := model.TokenTransaction{
 		TransactionUUID:   transactionUUID,
@@ -117,41 +117,41 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 		Status:            "completed",
 		CreatedAt:         time.Now(),
 	}
-	
+
 	if err := tx.Create(&transaction).Error; err != nil {
 		return nil, err
 	}
-	
+
 	// 5. 更新返回的用户Token对象
 	userToken.Balance = balanceAfter
 	userToken.Version = userToken.Version + 1
 	userToken.UpdatedAt = time.Now()
-	
+
 	return &userToken, nil
 }
 
 // CreditUserToken 增加用户Token余额
-func (r *TokenRepository) CreditUserToken(userID uint, amount int64, transactionUUID string, 
+func (r *TokenRepository) CreditUserToken(userID uint, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
-	
+
 	if amount <= 0 {
 		return nil, errors.New("增加的金额必须为正数")
 	}
-	
+
 	// 如果没有提供交易UUID，则生成一个
 	if transactionUUID == "" {
 		transactionUUID = uuid.New().String()
 	}
-	
+
 	var finalUserToken *model.UserToken
-	
+
 	err := r.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. 幂等性检查
 		existingTransaction, err := r.GetTransactionByUUID(transactionUUID)
 		if err != nil {
 			return err
 		}
-		
+
 		if existingTransaction != nil && existingTransaction.Status == "completed" {
 			// 交易已完成，获取当前用户Token状态
 			var userToken model.UserToken
@@ -161,52 +161,52 @@ func (r *TokenRepository) CreditUserToken(userID uint, amount int64, transaction
 			finalUserToken = &userToken
 			return nil // 事务成功，不重复处理
 		}
-		
+
 		// 2. 增加Token余额
 		updatedToken, err := r.ModifyTokenBalanceWithTransaction(
 			tx, userID, amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
 		if err != nil {
 			return err
 		}
-		
+
 		finalUserToken = updatedToken
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if finalUserToken == nil {
 		// 安全检查，正常情况下不应该发生
 		return r.GetUserToken(userID)
 	}
-	
+
 	return finalUserToken, nil
 }
 
 // DebitUserToken 扣减用户Token余额
-func (r *TokenRepository) DebitUserToken(userID uint, amount int64, transactionUUID string, 
+func (r *TokenRepository) DebitUserToken(userID uint, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
-	
+
 	if amount <= 0 {
 		return nil, errors.New("扣减的金额必须为正数")
 	}
-	
+
 	// 如果没有提供交易UUID，则生成一个
 	if transactionUUID == "" {
 		transactionUUID = uuid.New().String()
 	}
-	
+
 	var finalUserToken *model.UserToken
-	
+
 	err := r.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. 幂等性检查
 		existingTransaction, err := r.GetTransactionByUUID(transactionUUID)
 		if err != nil {
 			return err
 		}
-		
+
 		if existingTransaction != nil && existingTransaction.Status == "completed" {
 			// 交易已完成，获取当前用户Token状态
 			var userToken model.UserToken
@@ -216,27 +216,27 @@ func (r *TokenRepository) DebitUserToken(userID uint, amount int64, transactionU
 			finalUserToken = &userToken
 			return nil // 事务成功，不重复处理
 		}
-		
+
 		// 2. 扣减Token余额（注意这里传入负的金额值）
 		updatedToken, err := r.ModifyTokenBalanceWithTransaction(
 			tx, userID, -amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
 		if err != nil {
 			return err
 		}
-		
+
 		finalUserToken = updatedToken
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if finalUserToken == nil {
 		// 安全检查，正常情况下不应该发生
 		return r.GetUserToken(userID)
 	}
-	
+
 	return finalUserToken, nil
 }
 
@@ -253,17 +253,17 @@ func (r *TokenRepository) GetTokenBalance(userID uint) (int64, error) {
 func (r *TokenRepository) GetUserTokenTransactions(userID uint, page, limit int) ([]model.TokenTransaction, int64, error) {
 	var transactions []model.TokenTransaction
 	var total int64
-	
+
 	offset := (page - 1) * limit
-	
+
 	// 获取总数
 	r.DB.Model(&model.TokenTransaction{}).Where("user_id = ?", userID).Count(&total)
-	
+
 	// 获取分页数据
 	err := r.DB.Where("user_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(limit).Find(&transactions).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return transactions, total, nil
-} 
+}

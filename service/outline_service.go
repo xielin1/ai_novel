@@ -5,7 +5,7 @@ import (
 	"gin-template/common"
 	"gin-template/define"
 	"gin-template/model"
-	"gin-template/repository/db"
+	"gin-template/repository"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,18 +18,18 @@ import (
 // InitServices 初始化服务
 func InitServices() {
 	common.SysLog("[Service] 开始初始化所有服务")
-	
+
 	// 初始化数据库仓库
-	tokenRepo := db.NewTokenRepository(model.DB)
-	reconRepo := db.NewTokenReconciliationRepository(model.DB)
-	
+	tokenRepo := repository.NewTokenRepository(model.DB)
+	reconRepo := repository.NewTokenReconciliationRepository(model.DB)
+
 	// 初始化TokenService
 	ts := NewTokenService(tokenRepo)
 	SetTokenService(ts)
-	
+
 	// 初始化Token对账服务
 	InitReconciliationService(tokenRepo, reconRepo)
-	
+
 	common.SysLog("[Service] 所有服务初始化完成")
 }
 
@@ -80,7 +80,7 @@ func GetOutlineByProjectId(projectId int) (interface{}, error) {
 		}
 		return emptyOutline, nil
 	}
-	
+
 	return outline, nil
 }
 
@@ -91,14 +91,14 @@ func SaveOutlineContent(projectId int, content string) (*model.Outline, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 更新项目的最后编辑时间
 	project, err := model.GetProjectById(projectId)
 	if err == nil {
 		project.LastEditedAt = time.Now().Format("2006-01-02T15:04:05Z")
 		project.Update()
 	}
-	
+
 	return outline, nil
 }
 
@@ -107,13 +107,13 @@ func GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	
+
 	versions, err := model.GetVersionHistory(projectId, limit)
 	if err != nil {
 		// 如果是新项目，可能没有版本历史
 		return []*model.Version{}, nil
 	}
-	
+
 	return versions, nil
 }
 
@@ -124,13 +124,13 @@ func GenerateOutlineWithAI(userId uint, projectId int, content string, style str
 	if style != "" {
 		systemPrompt += "请使用" + style + "的写作风格。"
 	}
-	
+
 	userPrompt := "请根据以下大纲内容进行续写和扩展："
 	if wordLimit > 0 {
 		userPrompt += "续写内容大约" + strconv.Itoa(wordLimit) + "字。"
 	}
 	userPrompt += "\n\n" + content
-	
+
 	// 准备OpenAI请求
 	openaiReq := define.GenerateAIPromptRequest{
 		SystemPrompt: systemPrompt,
@@ -139,16 +139,16 @@ func GenerateOutlineWithAI(userId uint, projectId int, content string, style str
 		MaxTokens:    2000,            // 根据字数限制调整
 		Temperature:  0.7,             // 创意性参数
 	}
-	
+
 	// 生成唯一交易ID，用于幂等性控制
 	transactionUUID := uuid.New().String()
-	
+
 	// 调用AI服务进行续写
 	openaiResp, err := GenerateAICompletion(openaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("AI生成失败: %v", err)
 	}
-	
+
 	// 获取生成内容
 	aiGeneratedContent := openaiResp.Content
 	tokensUsed := openaiResp.TokensUsed
@@ -158,29 +158,29 @@ func GenerateOutlineWithAI(userId uint, projectId int, content string, style str
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 更新项目的最后编辑时间
 	project, err := model.GetProjectById(projectId)
 	if err == nil {
 		project.LastEditedAt = time.Now().Format("2006-01-02T15:04:05Z")
 		project.Update()
 	}
-	
+
 	// 扣除用户Token
 	description := fmt.Sprintf("项目[%d]大纲AI续写消耗", projectId)
 	projectIdStr := strconv.Itoa(projectId)
-	
+
 	// 使用TokenService扣减用户Token
 	userToken, err := GetTokenService().DebitToken(
-		userId, 
-		int64(tokensUsed), 
-		transactionUUID, 
-		"ai_generation_debit", 
-		description, 
-		"project", 
+		userId,
+		int64(tokensUsed),
+		transactionUUID,
+		"ai_generation_debit",
+		description,
+		"project",
 		projectIdStr,
 	)
-	
+
 	if err != nil {
 		// 如果扣款失败但内容已生成，记录错误日志但仍然返回生成的内容
 		// 在实际应用中，可能需要更复杂的错误处理策略
@@ -192,10 +192,10 @@ func GenerateOutlineWithAI(userId uint, projectId int, content string, style str
 			"error":         "Token扣减失败，请联系客服",
 		}, nil
 	}
-	
+
 	// 获取用户最新Token余额
 	tokenBalance := userToken.Balance
-	
+
 	return map[string]interface{}{
 		"content":       aiGeneratedContent,
 		"tokens_used":   tokensUsed,
@@ -209,17 +209,17 @@ func ExportOutlineToFile(projectId int, format string) (map[string]interface{}, 
 	if format != "txt" && format != "docx" && format != "pdf" {
 		return nil, fmt.Errorf("不支持的导出格式，仅支持txt、docx和pdf")
 	}
-	
+
 	// 获取大纲内容
 	outline, err := model.GetOutlineByProjectId(projectId)
 	if err != nil {
 		return nil, fmt.Errorf("获取大纲内容失败")
 	}
-	
+
 	// 生成文件名
 	fileName := fmt.Sprintf("outline_%d_%s.%s", projectId, time.Now().Format("20060102"), format)
 	filePath := filepath.Join(common.UploadPath, fileName)
-	
+
 	// 写入文件
 	if format == "txt" {
 		err = ioutil.WriteFile(filePath, []byte(outline.Content), 0644)
@@ -230,11 +230,11 @@ func ExportOutlineToFile(projectId int, format string) (map[string]interface{}, 
 		// TODO: 处理docx和pdf格式导出
 		return nil, fmt.Errorf("暂不支持docx和pdf格式导出")
 	}
-	
+
 	// 返回文件路径
 	fileUrl := "/upload/" + fileName
 	fileSize := len(outline.Content)
-	
+
 	return map[string]interface{}{
 		"file_url":  fileUrl,
 		"file_size": fileSize,
@@ -249,16 +249,16 @@ func UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFi
 	if !valid {
 		return nil, fmt.Errorf("仅支持.txt和.docx格式的文件")
 	}
-	
+
 	// 生成唯一文件名
 	link := common.GetUUID() + fileExt
 	savePath := filepath.Join(common.UploadPath, link)
-	
+
 	// 保存文件
 	if err := fileHeader.SaveFile(savePath); err != nil {
 		return nil, fmt.Errorf("保存文件失败: %v", err)
 	}
-	
+
 	// 读取文件内容
 	fileContent, err := ParseOutlineFile(savePath, fileExt)
 	if err != nil {
@@ -266,7 +266,7 @@ func UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFi
 		os.Remove(savePath)
 		return nil, err
 	}
-	
+
 	// 构建文件信息响应
 	fileInfo := &define.OutlineFileInfo{
 		Content:  fileContent,
@@ -274,6 +274,6 @@ func UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFi
 		Size:     fileHeader.Size,
 		Link:     link,
 	}
-	
+
 	return fileInfo, nil
-} 
+}
