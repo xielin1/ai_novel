@@ -3,7 +3,6 @@ module gin-template
 // +heroku goVersion go1.18
 go 1.23.0
 
-
 require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/sessions v0.0.5
@@ -12,6 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.14.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.3.0
+	github.com/google/wire v0.6.0
 	golang.org/x/crypto v0.38.0
 	gorm.io/driver/mysql v1.4.3
 	gorm.io/driver/sqlite v1.4.3
