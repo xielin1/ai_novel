@@ -2,78 +2,113 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gin-template/define"
 	"gin-template/model"
+	"gin-template/repository"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
-// 获取所有套餐
-func GetAllPackages() (define.PackageResponse, error) {
-	// 添加免费版套餐
-	freeFeatures := []string{"基础AI续写功能", "每月500个免费Token", "社区支持"}
-	freePackage := define.PackageInfo{
-		ID:            0,
-		Name:          "免费版",
-		Description:   "基础功能免费体验",
-		Price:         0,
-		MonthlyTokens: 500,
-		Duration:      "monthly",
-		Features:      freeFeatures,
-	}
-	
-	// 这里应从数据库中获取套餐信息
-	// 目前使用硬编码的数据，实际应从数据库中查询
-	packages := []define.PackageInfo{
-		freePackage,
-		{
-			ID:            1,
-			Name:          "基础版",
-			Description:   "适合轻度使用的创作者",
-			Price:         19.9,
-			MonthlyTokens: 5000,
-			Duration:      "monthly",
-			Features:      []string{"基础AI续写", "历史版本保存"},
-		},
-		{
-			ID:            2,
-			Name:          "升级版",
-			Description:   "适合中度创作需求",
-			Price:         49.9,
-			MonthlyTokens: 15000,
-			Duration:      "monthly",
-			Features:      []string{"高级AI续写", "历史版本保存", "优先客服支持"},
-		},
-		{
-			ID:            3,
-			Name:          "永久版会员",
-			Description:   "适合专业创作者",
-			Price:         199.9,
-			MonthlyTokens: 50000,
-			Duration:      "permanent",
-			Features:      []string{"高级AI续写", "无限历史版本", "专属客服", "高级导出格式"},
-		},
-	}
-	
-	return define.PackageResponse{Packages: packages}, nil
+// PackageService defines the interface for package-related business logic.
+type PackageService interface {
+	GetAllPackages() (define.PackageResponse, error)
+	CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error)
+	GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error)
+	CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error)
+	ValidatePackageID(packageID uint) (bool, error)
+	InitFreePackageInDB() error
 }
 
-// 验证套餐ID是否存在
-func ValidatePackageID(packageID uint) bool {
-	// 免费版特殊处理
-	if packageID == 0 {
-		return true
-	}
-	
-	// 从数据库查询套餐是否存在
-	var count int64
-	model.DB.Model(&model.Package{}).Where("id = ?", packageID).Count(&count)
-	return count > 0
+// packageServiceImpl implements PackageService.
+type packageServiceImpl struct {
+	packageRepo  repository.PackageRepository
+	tokenService TokenService
 }
 
-// 验证支付方式
+// NewPackageService creates a new instance of PackageService.
+// Note: TokenService needs to be passed as an argument once its interface is defined/available.
+func NewPackageService(repo repository.PackageRepository, tokenService TokenService) PackageService {
+	return &packageServiceImpl{
+		packageRepo:  repo,
+		tokenService: tokenService,
+	}
+}
+
+// GetAllPackages retrieves all available packages, including the free tier.
+func (s *packageServiceImpl) GetAllPackages() (define.PackageResponse, error) {
+	dbPackages, err := s.packageRepo.GetAllPackages()
+	if err != nil {
+		return define.PackageResponse{}, fmt.Errorf("failed to get packages from repository: %w", err)
+	}
+
+	var packageInfos []define.PackageInfo
+	for _, pkg := range dbPackages {
+		var features []string
+		if pkg.Features != "" {
+			if err := json.Unmarshal([]byte(pkg.Features), &features); err != nil {
+				fmt.Printf("Error unmarshalling features for package %d: %v\n", pkg.Id, err)
+				features = []string{}
+			}
+		}
+		packageInfos = append(packageInfos, define.PackageInfo{
+			ID:            pkg.Id,
+			Name:          pkg.Name,
+			Description:   pkg.Description,
+			Price:         pkg.Price,
+			MonthlyTokens: pkg.MonthlyTokens,
+			Duration:      pkg.Duration,
+			Features:      features,
+		})
+	}
+
+	foundFree := false
+	for _, pi := range packageInfos {
+		if pi.ID == model.FreePackage.Id {
+			foundFree = true
+			break
+		}
+	}
+	if !foundFree {
+		freePkgModel := s.packageRepo.GetFreePackage()
+		var freeFeatures []string
+		if freePkgModel.Features != "" {
+			_ = json.Unmarshal([]byte(freePkgModel.Features), &freeFeatures)
+		}
+		freePackageInfo := define.PackageInfo{
+			ID:            freePkgModel.Id,
+			Name:          freePkgModel.Name,
+			Description:   freePkgModel.Description,
+			Price:         freePkgModel.Price,
+			MonthlyTokens: freePkgModel.MonthlyTokens,
+			Duration:      freePkgModel.Duration,
+			Features:      freeFeatures,
+		}
+		packageInfos = append([]define.PackageInfo{freePackageInfo}, packageInfos...)
+	}
+
+	return define.PackageResponse{Packages: packageInfos}, nil
+}
+
+// ValidatePackageID checks if a package ID is valid.
+func (s *packageServiceImpl) ValidatePackageID(packageID uint) (bool, error) {
+	if packageID == model.FreePackage.Id {
+		return true, nil
+	}
+	_, err := s.packageRepo.GetPackageByID(packageID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("error validating package ID %d: %w", packageID, err)
+	}
+	return true, nil
+}
+
+// ValidatePaymentMethod (can remain a helper or be part of a payment service if more complex)
 func ValidatePaymentMethod(method string) bool {
 	validPaymentMethods := []string{"alipay", "wechat", "creditcard"}
 	for _, m := range validPaymentMethods {
@@ -84,184 +119,214 @@ func ValidatePaymentMethod(method string) bool {
 	return false
 }
 
-// 创建订阅
-func CreatePackageSubscription(userID uint, request define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
-	// 验证套餐ID
-	if !ValidatePackageID(request.PackageID) {
-		return define.SubscriptionResponse{}, fmt.Errorf("无效的套餐ID")
+// CreateSubscription handles the business logic for creating a new package subscription.
+func (s *packageServiceImpl) CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
+	validPkg, err := s.ValidatePackageID(req.PackageID)
+	if err != nil {
+		return define.SubscriptionResponse{}, fmt.Errorf("error during package ID validation: %w", err)
 	}
-	
-	// 验证支付方式
-	if !ValidatePaymentMethod(request.PaymentMethod) {
-		return define.SubscriptionResponse{}, fmt.Errorf("不支持的支付方式")
+	if !validPkg {
+		return define.SubscriptionResponse{}, errors.New("invalid package ID")
 	}
-	
-	// 获取套餐信息
-	var packageInfo model.Package
-	if request.PackageID != 0 {
-		if err := model.DB.First(&packageInfo, request.PackageID).Error; err != nil {
-			return define.SubscriptionResponse{}, err
+
+	if !ValidatePaymentMethod(req.PaymentMethod) {
+		return define.SubscriptionResponse{}, errors.New("unsupported payment method")
+	}
+
+	var pkgInfo *model.Package
+	if req.PackageID == model.FreePackage.Id {
+		pkgInfo = s.packageRepo.GetFreePackage()
+	} else {
+		pkgInfo, err = s.packageRepo.GetPackageByID(req.PackageID)
+		if err != nil {
+			return define.SubscriptionResponse{}, fmt.Errorf("failed to get package info: %w", err)
+		}
+	}
+
+	startDate := time.Now()
+	var expiryDate time.Time
+	var nextRenewalDate time.Time
+
+	switch pkgInfo.Duration {
+	case "monthly":
+		expiryDate = startDate.AddDate(0, 1, 0)
+	case "yearly":
+		expiryDate = startDate.AddDate(1, 0, 0)
+	case "permanent":
+		expiryDate = startDate.AddDate(100, 0, 0)
+	default:
+		return define.SubscriptionResponse{}, fmt.Errorf("unknown package duration: %s", pkgInfo.Duration)
+	}
+
+	autoRenew := pkgInfo.Duration != "permanent"
+	if autoRenew {
+		nextRenewalDate = expiryDate
+	}
+
+	_, err = s.packageRepo.CreateSubscription(userID, req.PackageID, autoRenew, startDate, expiryDate, nextRenewalDate, "active")
+	if err != nil {
+		return define.SubscriptionResponse{}, fmt.Errorf("failed to create subscription in repository: %w", err)
+	}
+
+	orderID := fmt.Sprintf("ORD%s%04d%04d", time.Now().Format("20060102150405"), userID, req.PackageID)
+	transactionUUID := uuid.New().String()
+
+	var tokenBalance int64
+	if s.tokenService != nil && pkgInfo.MonthlyTokens > 0 {
+		userToken, err := s.tokenService.CreditToken(
+			userID,
+			int64(pkgInfo.MonthlyTokens),
+			transactionUUID,
+			"package_purchase_credit",
+			fmt.Sprintf("购买[%s]套餐奖励", pkgInfo.Name),
+			"order",
+			orderID,
+		)
+		if err != nil {
+			fmt.Printf("Error crediting tokens for user %d, package %d: %v\n", userID, req.PackageID, err)
+		} else if userToken != nil {
+			tokenBalance = userToken.Balance
+		}
+	} else if s.tokenService == nil {
+		fmt.Printf("TokenService not available, skipping token credit for user %d, package %d\n", userID, req.PackageID)
+	}
+
+	return define.SubscriptionResponse{
+		OrderID:       orderID,
+		PackageName:   pkgInfo.Name,
+		Amount:        pkgInfo.Price,
+		PaymentStatus: "completed",
+		ValidUntil:    expiryDate.Format(time.RFC3339),
+		TokensAwarded: pkgInfo.MonthlyTokens,
+		TokenBalance:  tokenBalance,
+	}, nil
+}
+
+// GetUserCurrentPackageInfo retrieves the user's current package and subscription details.
+func (s *packageServiceImpl) GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
+	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
+	var pkg *model.Package
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			pkg = s.packageRepo.GetFreePackage()
+			subscription = &model.Subscription{
+				UserId:     userID,
+				PackageId:  pkg.Id,
+				Status:     "active",
+				StartDate:  time.Now(),
+				ExpiryDate: time.Now().AddDate(100, 0, 0),
+				AutoRenew:  false,
+			}
+		} else {
+			return define.CurrentPackageResponse{}, fmt.Errorf("error getting user subscription: %w", err)
 		}
 	} else {
-		packageInfo = model.FreePackage
+		pkg, err = s.packageRepo.GetPackageBySubscription(subscription)
+		if err != nil {
+			fmt.Printf("Error getting package for active subscription %d (user %d): %v. Falling back to free package.\n", subscription.Id, userID, err)
+			pkg = s.packageRepo.GetFreePackage()
+			subscription.PackageId = pkg.Id
+			subscription.Status = "active"
+			subscription.AutoRenew = false
+			subscription.NextRenewal = time.Time{}
+		}
 	}
-	
-	// 计算有效期
-	validUntil := time.Now().AddDate(0, 1, 0) // 默认一个月
-	if packageInfo.Duration == "yearly" {
-		validUntil = time.Now().AddDate(1, 0, 0)
-	} else if packageInfo.Duration == "permanent" {
-		validUntil = time.Now().AddDate(100, 0, 0) // 设置一个很久远的日期
-	}
-	
-	// 创建订阅记录
-	subscription := model.Subscription{
-		UserId:     userID,
-		PackageId:  request.PackageID,
-		Status:     "active",
-		StartDate:  time.Now(),
-		ExpiryDate: validUntil,
-		AutoRenew:  packageInfo.Duration != "permanent", // 永久版不自动续费
-	}
-	
-	// 保存订阅记录
-	if err := model.DB.Create(&subscription).Error; err != nil {
-		return define.SubscriptionResponse{}, err
-	}
-	
-	// 生成订单号
-	orderID := fmt.Sprintf("ORD%s%03d", time.Now().Format("20060102"), request.PackageID)
-	
-	// 生成唯一交易ID，用于幂等性控制
-	transactionUUID := uuid.New().String()
-	
-	// 为用户增加Token余额
-	tokensToAward := int64(packageInfo.MonthlyTokens)
-	
-	// 使用TokenService添加Token
-	userToken, err := GetTokenService().CreditToken(
-		userID,
-		tokensToAward,
-		transactionUUID,
-		"package_purchase_credit",
-		fmt.Sprintf("购买[%s]套餐奖励", packageInfo.Name),
-		"order",
-		orderID,
-	)
-	
-	if err != nil {
-		// 记录错误，但继续处理，因为用户已经付款
-		fmt.Printf("为用户[%d]增加Token失败: %v\n", userID, err)
-	}
-	
-	// 构建响应
-	var tokenBalance int64 = 0
-	if userToken != nil {
-		tokenBalance = userToken.Balance
-	}
-	
-	response := define.SubscriptionResponse{
-		OrderID:       orderID,
-		PackageName:   packageInfo.Name,
-		Amount:        packageInfo.Price,
-		PaymentStatus: "completed",
-		ValidUntil:    validUntil.Format(time.RFC3339),
-		TokensAwarded: packageInfo.MonthlyTokens,
-		TokenBalance:  tokenBalance,
-	}
-	
-	return response, nil
-}
 
-// 获取用户当前套餐信息
-func GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
-	// 从数据库获取用户的订阅信息
-	subscription, packageInfo, err := model.GetUserCurrentPackage(userID)
-	if err != nil {
-		return define.CurrentPackageResponse{}, err
-	}
-	
-	// 格式化日期为字符串
-	startDate := subscription.StartDate.Format(time.RFC3339)
-	expiryDate := subscription.ExpiryDate.Format(time.RFC3339)
-	
-	// 构建响应数据
-	var nextRenewalDate string
-	if subscription.AutoRenew {
-		nextRenewalDate = subscription.ExpiryDate.Format(time.RFC3339)
-	}
-	
-	// 解析features JSON字符串
 	var features []string
-	if packageInfo.Features != "" {
-		json.Unmarshal([]byte(packageInfo.Features), &features)
+	if pkg.Features != "" {
+		if errJ := json.Unmarshal([]byte(pkg.Features), &features); errJ != nil {
+			fmt.Printf("Error unmarshalling features for package %d (current info): %v\n", pkg.Id, errJ)
+			features = []string{}
+		}
 	}
-	
-	// 创建PackageInfo
-	pkg := define.PackageInfo{
-		ID:            packageInfo.Id,
-		Name:          packageInfo.Name,
-		Description:   packageInfo.Description,
-		Price:         packageInfo.Price,
-		MonthlyTokens: packageInfo.MonthlyTokens,
-		Duration:      packageInfo.Duration,
+
+	startDateStr := subscription.StartDate.Format(time.RFC3339)
+	expiryDateStr := subscription.ExpiryDate.Format(time.RFC3339)
+	var nextRenewalDateStr string
+	if subscription.AutoRenew && !subscription.NextRenewal.IsZero() {
+		nextRenewalDateStr = subscription.NextRenewal.Format(time.RFC3339)
+	}
+
+	respPkg := define.PackageInfo{
+		ID:            pkg.Id,
+		Name:          pkg.Name,
+		Description:   pkg.Description,
+		Price:         pkg.Price,
+		MonthlyTokens: pkg.MonthlyTokens,
+		Duration:      pkg.Duration,
 		Features:      features,
 	}
-	
-	// 创建SubscriptionInfo
-	subInfo := define.SubscriptionInfo{
-		PackageID:   packageInfo.Id,
+
+	respSubInfo := define.SubscriptionInfo{
+		PackageID:   pkg.Id,
 		UserID:      userID,
 		Status:      subscription.Status,
-		StartDate:   startDate,
-		ExpiryDate:  expiryDate,
+		StartDate:   startDateStr,
+		ExpiryDate:  expiryDateStr,
 		AutoRenew:   subscription.AutoRenew,
-		NextRenewal: nextRenewalDate,
+		NextRenewal: nextRenewalDateStr,
 	}
-	
-	response := define.CurrentPackageResponse{
-		Package:            pkg,
-		Subscription:       subInfo,
+
+	return define.CurrentPackageResponse{
+		Package:            respPkg,
+		Subscription:       respSubInfo,
 		SubscriptionStatus: subscription.Status,
-		StartDate:          startDate,
-		ExpiryDate:         expiryDate,
+		StartDate:          startDateStr,
+		ExpiryDate:         expiryDateStr,
 		AutoRenew:          subscription.AutoRenew,
-		NextRenewalDate:    nextRenewalDate,
-	}
-	
-	return response, nil
+		NextRenewalDate:    nextRenewalDateStr,
+	}, nil
 }
 
-// 取消自动续费
-func CancelPackageRenewal(userID uint) (define.CancelRenewalResponse, error) {
-	// 获取用户当前有效订阅
-	var subscription model.Subscription
-	result := model.DB.Where("user_id = ? AND status = ? AND expiry_date > ?", 
-		userID, "active", time.Now()).
-		Order("expiry_date DESC").
-		First(&subscription)
-	
-	if result.Error != nil {
-		return define.CancelRenewalResponse{}, result.Error
+// CancelSubscriptionRenewal cancels the auto-renewal for a user's active subscription.
+func (s *packageServiceImpl) CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error) {
+	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return define.CancelRenewalResponse{}, errors.New("no active subscription found to cancel renewal for")
+		}
+		return define.CancelRenewalResponse{}, fmt.Errorf("error getting user subscription for cancellation: %w", err)
 	}
-	
-	// 取消自动续费
+
+	if !subscription.AutoRenew {
+		pkgInfo, _ := s.packageRepo.GetPackageByID(subscription.PackageId)
+		var pkgName = "N/A"
+		if pkgInfo != nil {
+			pkgName = pkgInfo.Name
+		}
+		return define.CancelRenewalResponse{
+			PackageName: pkgName,
+			ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+			AutoRenew:   false,
+		}, errors.New("auto-renewal is already disabled")
+	}
+
 	subscription.AutoRenew = false
-	if err := model.DB.Save(&subscription).Error; err != nil {
-		return define.CancelRenewalResponse{}, err
+	subscription.NextRenewal = time.Time{}
+	if err := s.packageRepo.UpdateSubscription(subscription); err != nil {
+		return define.CancelRenewalResponse{}, fmt.Errorf("failed to update subscription to cancel renewal: %w", err)
 	}
-	
-	// 获取套餐信息
-	var packageInfo model.Package
-	if err := model.DB.First(&packageInfo, subscription.PackageId).Error; err != nil {
-		return define.CancelRenewalResponse{}, err
+
+	pkgInfo, err := s.packageRepo.GetPackageBySubscription(subscription)
+	if err != nil {
+		fmt.Printf("Error getting package info after cancelling renewal for user %d: %v\n", userID, err)
+		return define.CancelRenewalResponse{
+			PackageName: "N/A",
+			ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+			AutoRenew:   false,
+		}, nil
 	}
-	
-	response := define.CancelRenewalResponse{
-		PackageName: packageInfo.Name,
+
+	return define.CancelRenewalResponse{
+		PackageName: pkgInfo.Name,
 		ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
 		AutoRenew:   false,
-	}
-	
-	return response, nil
-} 
+	}, nil
+}
+
+// InitFreePackageInDB is a utility function that could be called during application startup
+// to ensure the free package is in the database.
+func (s *packageServiceImpl) InitFreePackageInDB() error {
+	return s.packageRepo.InitFreePackage()
+}

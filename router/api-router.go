@@ -30,8 +30,8 @@ func SetApiRouter(router *gin.Engine) {
 		aiRoute := apiRouter.Group("/ai")
 		aiRoute.Use(middleware.UserAuth()) // 需要登录才能使用
 		{
-			aiRoute.POST("/prompt", controller.AIPrompt)       // 提交提示并获取响应
-			aiRoute.GET("/models", controller.GetAIModels)     // 获取可用模型列表
+			aiRoute.POST("/prompt", controller.AIPrompt)         // 提交提示并获取响应
+			aiRoute.GET("/models", controller.GetAIModels)       // 获取可用模型列表
 			aiRoute.POST("/generate/:id", controller.AIGenerate) // AI续写
 		}
 
@@ -39,28 +39,28 @@ func SetApiRouter(router *gin.Engine) {
 		projectRoute := apiRouter.Group("/projects")
 		projectRoute.Use(middleware.UserAuth()) // 需要登录才能使用
 		{
-			projectRoute.GET("", controller.GetProjects)           // 获取项目列表
-			projectRoute.POST("", controller.CreateProject)        // 创建新项目
-			projectRoute.GET("/:id", controller.GetProject)        // 获取项目详情
-			projectRoute.PUT("/:id", controller.UpdateProject)     // 更新项目信息
-			projectRoute.DELETE("/:id", controller.DeleteProject)  // 删除项目
+			projectRoute.GET("", controller.GetProjects)          // 获取项目列表
+			projectRoute.POST("", controller.CreateProject)       // 创建新项目
+			projectRoute.GET("/:id", controller.GetProject)       // 获取项目详情
+			projectRoute.PUT("/:id", controller.UpdateProject)    // 更新项目信息
+			projectRoute.DELETE("/:id", controller.DeleteProject) // 删除项目
 		}
-		
+
 		// 大纲管理API路由
-		apiRouter.GET("/outlines/:id", middleware.UserAuth(), controller.GetOutline)         // 获取大纲内容
-		apiRouter.POST("/outlines/:id", middleware.UserAuth(), controller.SaveOutline)       // 保存大纲内容
-		apiRouter.GET("/versions/:id", middleware.UserAuth(), controller.GetVersions)        // 获取版本历史
-		apiRouter.POST("/outline/parse/:id", middleware.UserAuth(), controller.ParseOutline) // 解析大纲文件
+		apiRouter.GET("/outlines/:id", middleware.UserAuth(), controller.GetOutline)           // 获取大纲内容
+		apiRouter.POST("/outlines/:id", middleware.UserAuth(), controller.SaveOutline)         // 保存大纲内容
+		apiRouter.GET("/versions/:id", middleware.UserAuth(), controller.GetVersions)          // 获取版本历史
+		apiRouter.POST("/outline/parse/:id", middleware.UserAuth(), controller.ParseOutline)   // 解析大纲文件
 		apiRouter.POST("/upload/outline/:id", middleware.UserAuth(), controller.UploadOutline) // 上传大纲文件（兼容旧接口）
-		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)      // 导出大纲
+		apiRouter.POST("/exports/:id", middleware.UserAuth(), controller.ExportOutline)        // 导出大纲
 
 		// 套餐管理API路由
 		packageRoute := apiRouter.Group("/packages")
 		packageRoute.Use(middleware.UserAuth()) // 需要登录才能使用
 		{
-			packageRoute.GET("", controller.GetPackages)                   // 获取套餐列表
-			packageRoute.POST("/subscribe", controller.SubscribePackage)   // 购买/订阅套餐
-			packageRoute.POST("/cancel-renewal", controller.CancelRenewal) // 取消自动续费
+			//packageRoute.GET("", controller.GetPackages)                   // 获取套餐列表
+			//packageRoute.POST("/subscribe", controller.SubscribePackage)   // 购买/订阅套餐
+			//packageRoute.POST("/cancel-renewal", controller.CancelRenewal) // 取消自动续费
 		}
 
 		//user
@@ -78,9 +78,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateToken)
-				selfRoute.GET("/package", controller.GetUserPackage) // 获取当前用户的套餐信息
-				selfRoute.GET("/referral-code", referralController.GetReferralCode) // 获取个人推荐码
-				selfRoute.GET("/referrals", referralController.GetReferrals) // 获取推荐记录
+				//selfRoute.GET("/package", controller.GetUserPackage)                               // 获取当前用户的套餐信息
+				selfRoute.GET("/referral-code", referralController.GetReferralCode)                // 获取个人推荐码
+				selfRoute.GET("/referrals", referralController.GetReferrals)                       // 获取推荐记录
 				selfRoute.POST("/generate-referral-code", referralController.GenerateReferralCode) // 生成新的推荐码
 			}
 
@@ -104,7 +104,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.PUT("/", controller.UpdateOption)
 		}
-		
+
 		//file
 		fileRoute := apiRouter.Group("/file")
 		fileRoute.Use(middleware.AdminAuth())
