@@ -6,8 +6,8 @@ type Outline struct {
 	ProjectId      int    `json:"project_id" gorm:"index"`
 	Content        string `json:"content" gorm:"type:text"`
 	CurrentVersion int    `json:"current_version"`
-	CreatedAt      string `json:"created_at"`
-	UpdatedAt      string `json:"updated_at"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
 }
 
 // Version 版本历史模型
@@ -20,5 +20,5 @@ type Version struct {
 	AiStyle       string `json:"ai_style"`
 	WordLimit     int    `json:"word_limit"`
 	TokensUsed    int    `json:"tokens_used"`
-	CreatedAt     string `json:"created_at"`
+	CreatedAt     int64  `json:"created_at"`
 }

@@ -115,7 +115,6 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 		RelatedEntityID:   relatedEntityID,
 		Description:       description,
 		Status:            "completed",
-		CreatedAt:         time.Now(),
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {

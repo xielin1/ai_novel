@@ -44,16 +44,13 @@ func (s *ProjectService) GetUserProjects(userId, offset, limit int) ([]*model.Pr
 
 // CreateProject 创建新项目
 func (s *ProjectService) CreateProject(title, description, genre string, userId int, username string) (*model.Project, error) {
-	currentTime := time.Now().Format("2006-01-02T15:04:05Z")
 	project := &model.Project{
 		Title:        title,
 		Description:  description,
 		Genre:        genre,
 		UserId:       userId,
 		Username:     username,
-		CreatedAt:    currentTime,
-		UpdatedAt:    currentTime,
-		LastEditedAt: currentTime,
+		LastEditedAt: time.Now().Unix(),
 	}
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("创建新项目: %s，用户Id: %d", title, userId))
 	if err := s.repo.CreateProject(project); err != nil {
@@ -86,7 +83,6 @@ func (s *ProjectService) UpdateProject(project *model.Project, title, descriptio
 	project.Title = title
 	project.Description = description
 	project.Genre = genre
-	project.UpdatedAt = time.Now().Format("2006-01-02T15:04:05Z")
 	if err := s.repo.UpdateProject(project); err != nil {
 		common.SysError(projectServiceLogPrefix + fmt.Sprintf("更新项目 %d 失败: %v", project.Id, err))
 		return err

@@ -35,28 +35,12 @@ func (r *ReferralRepository) GetReferralByUserId(userId uint) (*model.Referral, 
 
 // GenerateNewReferralCode 生成新推荐码
 func (r *ReferralRepository) GenerateNewReferralCode(userId uint) (*model.Referral, error) {
-	oldReferral, err := r.GetReferralByUserId(userId)
-	if err != nil {
-		return nil, err
-	}
-
 	newCode := r.generateRandomCode(8) // 私有方法生成随机码
 
-	if oldReferral != nil {
-		oldReferral.Code = newCode
-		oldReferral.UpdatedAt = time.Now()
-		if err := r.DB.Save(oldReferral).Error; err != nil {
-			return nil, err
-		}
-		return oldReferral, nil
-	}
-
 	newReferral := &model.Referral{
-		UserId:    userId,
-		Code:      newCode,
-		IsActive:  true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		UserId:   userId,
+		Code:     newCode,
+		IsActive: true,
 	}
 	if err := r.DB.Create(newReferral).Error; err != nil {
 		return nil, err
@@ -93,8 +77,7 @@ func (r *ReferralRepository) UseReferralCode(userId uint, referralCode string) (
 		UserId:         userId,
 		ReferralCode:   referralCode,
 		TokensRewarded: tokensRewarded,
-		UsedAt:         time.Now(),
-		CreatedAt:      time.Now(),
+		UsedAt:         time.Now().Unix(),
 	}
 	if err := r.DB.Create(&use).Error; err != nil {
 		return 0, err
@@ -161,7 +144,6 @@ func (r *ReferralRepository) GetReferrals(userId uint, page, limit int) ([]map[s
 			"id":              use.Id,
 			"user_id":         use.UserId,
 			"username":        r.maskUsername(user.Username), // 私有方法脱敏
-			"registered_at":   use.UsedAt.Format(time.RFC3339),
 			"tokens_rewarded": use.TokensRewarded,
 		})
 	}

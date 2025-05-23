@@ -203,8 +203,8 @@ func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentP
 				UserId:     userID,
 				PackageId:  pkg.Id,
 				Status:     "active",
-				StartDate:  time.Now(),
-				ExpiryDate: time.Now().AddDate(100, 0, 0),
+				StartDate:  time.Now().Unix(),
+				ExpiryDate: time.Now().Unix(),
 				AutoRenew:  false,
 			}
 		} else {
@@ -218,7 +218,7 @@ func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentP
 			subscription.PackageId = pkg.Id
 			subscription.Status = "active"
 			subscription.AutoRenew = false
-			subscription.NextRenewal = time.Time{}
+			subscription.NextRenewal = time.Now().Unix()
 		}
 	}
 
@@ -230,11 +230,11 @@ func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentP
 		}
 	}
 
-	startDateStr := subscription.StartDate.Format(time.RFC3339)
-	expiryDateStr := subscription.ExpiryDate.Format(time.RFC3339)
-	var nextRenewalDateStr string
-	if subscription.AutoRenew && !subscription.NextRenewal.IsZero() {
-		nextRenewalDateStr = subscription.NextRenewal.Format(time.RFC3339)
+	startDateStr := time.Now().Unix()
+	expiryDateStr := time.Now().Unix()
+	var nextRenewalDateStr int64
+	if subscription.AutoRenew {
+		nextRenewalDateStr = time.Now().Unix()
 	}
 
 	respPkg := define.PackageInfo{
@@ -286,13 +286,13 @@ func (s *PackageService) CancelSubscriptionRenewal(userID uint) (define.CancelRe
 		}
 		return define.CancelRenewalResponse{
 			PackageName: pkgName,
-			ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+			ExpiryDate:  time.Now().Unix(),
 			AutoRenew:   false,
 		}, errors.New("auto-renewal is already disabled")
 	}
 
 	subscription.AutoRenew = false
-	subscription.NextRenewal = time.Time{}
+	subscription.NextRenewal = time.Now().Unix()
 	if err := s.packageRepo.UpdateSubscription(subscription); err != nil {
 		return define.CancelRenewalResponse{}, fmt.Errorf("failed to update subscription to cancel renewal: %w", err)
 	}
@@ -302,14 +302,14 @@ func (s *PackageService) CancelSubscriptionRenewal(userID uint) (define.CancelRe
 		fmt.Printf("Error getting package info after cancelling renewal for user %d: %v\n", userID, err)
 		return define.CancelRenewalResponse{
 			PackageName: "N/A",
-			ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+			ExpiryDate:  time.Now().Unix(),
 			AutoRenew:   false,
 		}, nil
 	}
 
 	return define.CancelRenewalResponse{
 		PackageName: pkgInfo.Name,
-		ExpiryDate:  subscription.ExpiryDate.Format(time.RFC3339),
+		ExpiryDate:  time.Now().Unix(),
 		AutoRenew:   false,
 	}, nil
 }

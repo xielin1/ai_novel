@@ -3,7 +3,6 @@ package repository
 import (
 	"gin-template/model"
 	"gorm.io/gorm"
-	"time"
 )
 
 // OutlineRepository 提供大纲相关的数据库操作
@@ -33,8 +32,6 @@ func (r *OutlineRepository) GetOutlineByProjectId(projectId int) (*model.Outline
 
 // SaveOutline 保存大纲内容并创建新版本
 func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGenerated bool, aiStyle string, wordLimit int, tokensUsed int) (*model.Outline, error) {
-	// 获取当前时间
-	currentTime := time.Now().Format("2006-01-02T15:04:05Z")
 
 	// 查找是否存在大纲
 	var outline model.Outline
@@ -50,8 +47,6 @@ func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGener
 			ProjectId:      projectId,
 			Content:        content,
 			CurrentVersion: 1,
-			CreatedAt:      currentTime,
-			UpdatedAt:      currentTime,
 		}
 
 		if err := r.DB.Create(&outline).Error; err != nil {
@@ -61,7 +56,6 @@ func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGener
 		// 如果存在，更新大纲内容和版本
 		outline.Content = content
 		outline.CurrentVersion += 1
-		outline.UpdatedAt = currentTime
 
 		if err := r.DB.Save(&outline).Error; err != nil {
 			return nil, err
@@ -77,7 +71,6 @@ func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGener
 		AiStyle:       aiStyle,
 		WordLimit:     wordLimit,
 		TokensUsed:    tokensUsed,
-		CreatedAt:     currentTime,
 	}
 
 	if err := r.DB.Create(&version).Error; err != nil {

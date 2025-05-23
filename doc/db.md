@@ -16,14 +16,13 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE COMMENT '电子邮箱',
     role INT NOT NULL DEFAULT 1 COMMENT '角色(1:普通用户，2:管理员)', 
     status INT NOT NULL DEFAULT 1 COMMENT '状态(1:启用，0:禁用)',
-    token VARCHAR(255) COMMENT '身份令牌/Token余额',
+    token VARCHAR(255) COMMENT '身份令牌',
     github_id VARCHAR(50) COMMENT 'GitHub ID',
     wechat_id VARCHAR(50) COMMENT '微信ID',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
     INDEX idx_email (email),
-    INDEX idx_token (token),
     INDEX idx_github_id (github_id),
     INDEX idx_wechat_id (wechat_id)
 );
@@ -61,21 +60,33 @@ CREATE TABLE referral_uses (
 );
 ```
 
-### 4. Token记录表 (token_records)
-
+### 4. Token记录表 (user_tokens)
 ```sql
-CREATE TABLE token_records (
-    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL COMMENT '用户ID',
-    amount INT NOT NULL COMMENT '金额变动(正值为增加，负值为消费)',
-    balance INT NOT NULL COMMENT '变动后余额',
-    record_type INT NOT NULL COMMENT '记录类型(1:套餐赠送,2:推荐奖励,3:续写消费,4:充值)',
-    related_id INT COMMENT '相关记录ID',
-    description VARCHAR(255) COMMENT '描述',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id),
-    INDEX idx_record_type (record_type)
-);
+-- 用户 Token 余额表
+CREATE TABLE `user_tokens` (
+    `user_id` BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    `balance` BIGINT NOT NULL DEFAULT 0,
+    `version` INT UNSIGNED NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL,
+    `updated_at` DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Token 交易流水表
+CREATE TABLE `token_transactions` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `transaction_uuid` VARCHAR(36) NOT NULL UNIQUE,
+    `user_id` BIGINT UNSIGNED NOT NULL,
+    `amount` BIGINT NOT NULL,
+    `balance_before` BIGINT NOT NULL,
+    `balance_after` BIGINT NOT NULL,
+    `type` VARCHAR(50) NOT NULL,
+    `related_entity_type` VARCHAR(50),
+    `related_entity_id` VARCHAR(100),
+    `description` TEXT,
+    `status` VARCHAR(20) NOT NULL DEFAULT 'completed',
+    `created_at` DATETIME NOT NULL,
+    INDEX (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ### 5. 套餐表 (packages)

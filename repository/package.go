@@ -65,10 +65,10 @@ func (r *PackageRepository) CreateSubscription(userID uint, packageID uint, auto
 		UserId:      userID,
 		PackageId:   packageID,
 		Status:      status, // "active"
-		StartDate:   startDate,
-		ExpiryDate:  expiryDate,
+		StartDate:   time.Now().Unix(),
+		ExpiryDate:  time.Now().Unix(),
 		AutoRenew:   autoRenew,
-		NextRenewal: nextRenewalDate,
+		NextRenewal: time.Now().Unix(),
 	}
 	if err := r.db.Create(subscription).Error; err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (r *PackageRepository) CreateTokenDistribution(userID uint, subscriptionID 
 		SubscriptionId: subscriptionID,
 		PackageId:      packageID,
 		Amount:         amount,
-		DistributedAt:  distributedAt,
+		DistributedAt:  time.Now().Unix(),
 	}
 	if err := r.db.Create(distribution).Error; err != nil {
 		return nil, err

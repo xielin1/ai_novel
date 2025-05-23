@@ -1,8 +1,12 @@
 package model
 
 import (
+	"context"
 	"gin-template/common"
+	"gorm.io/gorm/schema"
 	"os"
+	"reflect"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
@@ -44,6 +48,7 @@ func InitDB() (err error) {
 		db, err = gorm.Open(mysql.Open(os.Getenv("SQL_DSN")), &gorm.Config{
 			PrepareStmt: true, // precompile SQL
 		})
+		db.Use(&SimpleTimePlugin{UseMilli: false})
 	} else {
 		// Use SQLite
 		db, err = gorm.Open(sqlite.Open(common.SQLitePath), &gorm.Config{
@@ -100,4 +105,80 @@ func CloseDB() error {
 	}
 	err = sqlDB.Close()
 	return err
+}
+
+type SimpleTimePlugin struct {
+	UseMilli bool // 是否使用毫秒时间戳
+}
+
+func (p *SimpleTimePlugin) Name() string { return "simple_time_plugin" }
+
+func (p *SimpleTimePlugin) Initialize(db *gorm.DB) error {
+	// 注册回调
+	db.Callback().Create().Before("gorm:create").Register("set_time", p.setCreateTime)
+	db.Callback().Update().Before("gorm:update").Register("set_time", p.setUpdateTime)
+	return nil
+}
+
+// 获取时间戳
+func (p *SimpleTimePlugin) now() int64 {
+	if p.UseMilli {
+		return time.Now().UnixMilli()
+	}
+	return time.Now().Unix()
+}
+
+// 创建时设置 create_at 和 update_at
+func (p *SimpleTimePlugin) setCreateTime(db *gorm.DB) {
+	if db.Statement.Schema == nil {
+		return
+	}
+
+	now := p.now()
+	p.setField(db, "create_at", now)
+	p.setField(db, "update_at", now)
+}
+
+// 更新时设置 update_at
+func (p *SimpleTimePlugin) setUpdateTime(db *gorm.DB) {
+	if db.Statement.Schema == nil || db.Statement.SkipHooks {
+		return
+	}
+	p.setField(db, "update_at", p.now())
+}
+
+// 通用字段设置方法
+func (p *SimpleTimePlugin) setField(db *gorm.DB, fieldName string, value int64) {
+	field := db.Statement.Schema.LookUpField(fieldName)
+	if field == nil {
+		return
+	}
+
+	rv := reflect.ValueOf(db.Statement.Dest)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < rv.Len(); i++ {
+			p.setFieldValue(rv.Index(i), field, value)
+		}
+	case reflect.Struct:
+		p.setFieldValue(rv, field, value)
+	}
+}
+
+// 设置字段值
+func (p *SimpleTimePlugin) setFieldValue(rv reflect.Value, field *schema.Field, value int64) {
+	ctx := context.Background()
+	fv := field.ReflectValueOf(ctx, rv)
+	if fv.IsValid() && fv.CanSet() {
+		switch fv.Kind() {
+		case reflect.Int, reflect.Int64:
+			fv.SetInt(value)
+		case reflect.Uint, reflect.Uint64:
+			fv.SetUint(uint64(value))
+		}
+	}
 }

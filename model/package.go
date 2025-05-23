@@ -53,25 +53,25 @@ func (p *Package) ToResponsePackage() map[string]interface{} {
 
 // Subscription 订阅模型
 type Subscription struct {
-	Id          uint      `json:"id" gorm:"primaryKey"`
-	UserId      uint      `json:"user_id" gorm:"not null;index"`
-	PackageId   uint      `json:"package_id" gorm:"not null;index"`
-	Status      string    `json:"status" gorm:"type:varchar(20);not null;default:'active'"` // active, expired, cancelled
-	StartDate   time.Time `json:"start_date" gorm:"not null"`
-	ExpiryDate  time.Time `json:"expiry_date" gorm:"not null"`
-	AutoRenew   bool      `json:"auto_renew" gorm:"default:true"`
-	NextRenewal time.Time `json:"next_renewal,omitempty" gorm:"null"` // 允许 NextRenewal 为空
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Id          uint   `json:"id" gorm:"primaryKey"`
+	UserId      uint   `json:"user_id" gorm:"not null;index"`
+	PackageId   uint   `json:"package_id" gorm:"not null;index"`
+	Status      string `json:"status" gorm:"type:varchar(20);not null;default:'active'"` // active, expired, cancelled
+	StartDate   int64  `json:"start_date" gorm:"not null"`
+	ExpiryDate  int64  `json:"expiry_date" gorm:"not null"`
+	AutoRenew   bool   `json:"auto_renew" gorm:"default:true"`
+	NextRenewal int64  `json:"next_renewal,omitempty" gorm:"null"` // 允许 NextRenewal 为空
+	CreatedAt   int64  `json:"created_at"`
+	UpdatedAt   int64  `json:"updated_at"`
 }
 
 // TokenDistribution 每月Token分发记录
 type TokenDistribution struct {
-	Id             uint      `json:"id" gorm:"primaryKey"`
-	UserId         uint      `json:"user_id" gorm:"not null;index"`
-	SubscriptionId uint      `json:"subscription_id" gorm:"index"`
-	PackageId      uint      `json:"package_id" gorm:"index"`
-	Amount         int       `json:"amount" gorm:"not null"`
-	DistributedAt  time.Time `json:"distributed_at" gorm:"not null"`
-	CreatedAt      time.Time `json:"created_at"`
+	Id             uint  `json:"id" gorm:"primaryKey"`
+	UserId         uint  `json:"user_id" gorm:"not null;index"`
+	SubscriptionId uint  `json:"subscription_id" gorm:"index"`
+	PackageId      uint  `json:"package_id" gorm:"index"`
+	Amount         int   `json:"amount" gorm:"not null"`
+	DistributedAt  int64 `json:"distributed_at" gorm:"not null"`
+	CreatedAt      int64 `json:"created_at"`
 }

@@ -1,9 +1,5 @@
 package model
 
-import (
-	"time"
-)
-
 // TokenReconciliationRecord Token对账记录
 type TokenReconciliationRecord struct {
 	ID                uint  `gorm:"primaryKey;autoIncrement"`
@@ -12,9 +8,9 @@ type TokenReconciliationRecord struct {
 	CalculatedBalance int64 `gorm:"not null"`
 	Discrepancy       int64 `gorm:"not null"` // 当前余额 - 计算余额
 	IsFixed           bool  `gorm:"default:false"`
-	FixedAt           *time.Time
+	FixedAt           int64
 	Description       string `gorm:"type:text"`
-	CreatedAt         time.Time
+	CreatedAt         int64
 }
 
 // TableName 指定表名

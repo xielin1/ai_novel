@@ -27,7 +27,6 @@ func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID uint, cu
 		CalculatedBalance: calculatedBalance,
 		Discrepancy:       currentBalance - calculatedBalance,
 		Description:       description,
-		CreatedAt:         time.Now(),
 	}
 
 	err := r.DB.Create(record).Error

@@ -1,32 +1,24 @@
 package controller
 
 import (
+	"gin-template/define"
 	"gin-template/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-// ProjectRequest 项目请求结构
-type ProjectRequest struct {
-	Title       string `json:"title" binding:"required"`
-	Description string `json:"description"`
-	Genre       string `json:"genre"`
-}
-
-// ProjectController 项目控制器结构体
 type ProjectController struct {
-	service *service.ProjectService // 注入的服务层实例
+	service *service.ProjectService
 }
 
-// NewProjectController 创建项目控制器实例（依赖注入）
 func NewProjectController(projectSvc *service.ProjectService) *ProjectController {
 	return &ProjectController{
 		service: projectSvc,
 	}
 }
 
-// GetProjects 获取项目列表（结构体方法）
+// GetProjects 获取项目列表
 func (c *ProjectController) GetProjects(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
@@ -43,20 +35,12 @@ func (c *ProjectController) GetProjects(ctx *gin.Context) {
 		return
 	}
 
-	ResponseOK(ctx, gin.H{
-		"data": projects,
-		"pagination": gin.H{
-			"total": total,
-			"page":  page,
-			"limit": limit,
-			"pages": (total + int64(limit) - 1) / int64(limit),
-		},
-	})
+	ResponseOK(ctx, define.BuildPageResponse(projects, total, page, limit))
 }
 
-// CreateProject 创建新项目（结构体方法）
+// CreateProject 创建新项目
 func (c *ProjectController) CreateProject(ctx *gin.Context) {
-	var projectReq ProjectRequest
+	var projectReq define.ProjectRequest
 	if err := ctx.ShouldBindJSON(&projectReq); err != nil {
 		ResponseError(ctx, "无效的参数")
 		return
@@ -64,11 +48,6 @@ func (c *ProjectController) CreateProject(ctx *gin.Context) {
 
 	userId := ctx.GetInt("id")
 	username := ctx.GetString("username")
-
-	if projectReq.Title == "" {
-		ResponseError(ctx, "项目标题不能为空")
-		return
-	}
 
 	project, err := c.service.CreateProject(projectReq.Title, projectReq.Description, projectReq.Genre, userId, username)
 	if err != nil {
@@ -79,7 +58,7 @@ func (c *ProjectController) CreateProject(ctx *gin.Context) {
 	ResponseOKWithMessage(ctx, "项目创建成功", project)
 }
 
-// GetProject 获取项目详情（结构体方法）
+// GetProject 获取项目详情
 func (c *ProjectController) GetProject(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
@@ -104,7 +83,7 @@ func (c *ProjectController) GetProject(ctx *gin.Context) {
 	ResponseOK(ctx, project)
 }
 
-// UpdateProject 更新项目信息（结构体方法）
+// UpdateProject 更新项目信息
 func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
@@ -114,7 +93,7 @@ func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 
 	userId := ctx.GetInt("id")
 
-	var projectReq ProjectRequest
+	var projectReq define.ProjectRequest
 	if err := ctx.ShouldBindJSON(&projectReq); err != nil {
 		ResponseError(ctx, "无效的参数")
 		return
@@ -142,7 +121,7 @@ func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 	ResponseOKWithMessage(ctx, "项目更新成功", project)
 }
 
-// DeleteProject 删除项目（结构体方法）
+// DeleteProject 删除项目
 func (c *ProjectController) DeleteProject(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
