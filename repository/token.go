@@ -124,7 +124,7 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 	// 5. 更新返回的用户Token对象
 	userToken.Balance = balanceAfter
 	userToken.Version = userToken.Version + 1
-	userToken.UpdatedAt = time.Now()
+	userToken.UpdatedAt = time.Now().Unix()
 
 	return &userToken, nil
 }

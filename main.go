@@ -5,7 +5,9 @@ import (
 	"gin-template/common"
 	"gin-template/middleware"
 	"gin-template/model"
+	"gin-template/repository"
 	"gin-template/router"
+	"gin-template/service"
 	"log"
 	"os"
 	"strconv"
@@ -43,6 +45,7 @@ func main() {
 	if err1 != nil {
 		common.FatalLog(err1)
 	}
+	InitTokenService()
 
 	// Initialize Redis
 	err = common.InitRedisClient()
@@ -77,4 +80,9 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func InitTokenService() {
+	tokenService := service.NewTokenService(repository.NewTokenRepository(model.DB))
+	service.SetTokenService(tokenService)
 }

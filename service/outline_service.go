@@ -22,7 +22,7 @@ type OutlineService struct {
 }
 
 func NewOutlineService(tokenRepo *repository.TokenRepository, reconRepo *repository.TokenReconciliationRepository, outlineRepo *repository.OutlineRepository) *OutlineService {
-	logInfo("初始化OutlineService")
+	common.SysLog("[OutlineService] Initializing OutlineService")
 	return &OutlineService{
 		tokenRepo:   tokenRepo,
 		reconRepo:   reconRepo,
@@ -30,51 +30,59 @@ func NewOutlineService(tokenRepo *repository.TokenRepository, reconRepo *reposit
 	}
 }
 
-// ParseOutlineFile 解析上传的大纲文件内容
+// ParseOutlineFile parses the uploaded outline file content
 func (s *OutlineService) ParseOutlineFile(filePath string, fileExt string) (string, error) {
-	// 检查文件是否存在
+	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		logError("文件不存在: %s", filePath)
-		return "", fmt.Errorf("文件不存在: %s", filePath)
+		logMsg := fmt.Sprintf("[OutlineService] File not found: %s", filePath)
+		common.SysError(logMsg)
+		return "", fmt.Errorf(logMsg)
 	}
 
-	// 根据文件类型解析内容
+	// Parse content based on file type
 	if fileExt == ".txt" {
-		// 读取文本文件内容
+		// Read text file content
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			logError("读取文件失败: %v", err)
-			return "", fmt.Errorf("读取文件失败: %v", err)
+			logMsg := fmt.Sprintf("[OutlineService] Failed to read file: %v", err)
+			common.SysError(logMsg)
+			return "", fmt.Errorf(logMsg)
 		}
-		logInfo("成功解析txt文件: %s", filePath)
+		logMsg := fmt.Sprintf("[OutlineService] Successfully parsed txt file: %s", filePath)
+		common.SysLog(logMsg)
 		return string(data), nil
 	} else if fileExt == ".docx" {
-		// TODO: 实现docx文档解析
-		logInfo("暂不支持docx格式解析")
-		return "", fmt.Errorf("暂不支持docx格式解析")
+		// TODO: Implement docx parsing
+		logMsg := "[OutlineService] Docx format parsing is not supported yet"
+		common.SysLog(logMsg)
+		return "", fmt.Errorf(logMsg)
 	}
 
-	logError("不支持的文件格式: %s", fileExt)
-	return "", fmt.Errorf("不支持的文件格式: %s", fileExt)
+	logMsg := fmt.Sprintf("[OutlineService] Unsupported file format: %s", fileExt)
+	common.SysError(logMsg)
+	return "", fmt.Errorf(logMsg)
 }
 
-// ValidateOutlineFile 验证大纲文件格式是否有效
+// ValidateOutlineFile validates if the outline file format is valid
 func (s *OutlineService) ValidateOutlineFile(filename string) (string, bool) {
 	fileExt := filepath.Ext(filename)
 	if fileExt != ".txt" && fileExt != ".docx" {
-		logInfo("文件格式无效: %s", filename)
+		logMsg := fmt.Sprintf("[OutlineService] Invalid file format: %s", filename)
+		common.SysLog(logMsg)
 		return "", false
 	}
-	logInfo("文件格式有效: %s", filename)
+	logMsg := fmt.Sprintf("[OutlineService] Valid file format: %s", filename)
+	common.SysLog(logMsg)
 	return fileExt, true
 }
 
-// GetOutlineByProjectId 获取项目大纲
+// GetOutlineByProjectId retrieves the outline by project ID
 func (s *OutlineService) GetOutlineByProjectId(projectId int64) (interface{}, error) {
 	outline, err := s.outlineRepo.GetOutlineByProjectId(projectId)
 	if err != nil {
-		// 如果是新项目，可能没有大纲
-		logInfo("项目 %d 没有大纲，返回空大纲", projectId)
+		// Empty outline for new projects
+		logMsg := fmt.Sprintf("[OutlineService] No outline found for project %d, returning empty outline", projectId)
+		common.SysLog(logMsg)
 		emptyOutline := map[string]interface{}{
 			"id":              0,
 			"project_id":      projectId,
@@ -86,108 +94,120 @@ func (s *OutlineService) GetOutlineByProjectId(projectId int64) (interface{}, er
 		return emptyOutline, nil
 	}
 
-	logInfo("成功获取项目 %d 的大纲", projectId)
+	logMsg := fmt.Sprintf("[OutlineService] Successfully retrieved outline for project %d", projectId)
+	common.SysLog(logMsg)
 	return outline, nil
 }
 
-// SaveOutlineContent 保存大纲内容
+// SaveOutlineContent saves the outline content
 func (s *OutlineService) SaveOutlineContent(projectId int64, content string) (*model.Outline, error) {
-	// 保存大纲内容，创建新版本，非AI生成
-	logInfo("保存项目 %d 的大纲内容", projectId)
+	// Save outline content, create new version, not AI-generated
+	logMsg := fmt.Sprintf("[OutlineService] Saving outline content for project %d", projectId)
+	common.SysLog(logMsg)
 	outline, err := s.outlineRepo.SaveOutline(projectId, content, false, "", 0, 0)
 	if err != nil {
-		logError("保存项目 %d 的大纲内容失败: %v", projectId, err)
+		logMsg := fmt.Sprintf("[OutlineService] Failed to save outline content for project %d: %v", projectId, err)
+		common.SysError(logMsg)
 		return nil, err
 	}
 
-	//// 更新项目的最后编辑时间
+	//// Update project's last edit time
 	//project, err := model.GetProjectById(projectId)
 	//if err == nil {
 	//	project.LastEditedAt = time.Now().Format("2006-01-02T15:04:05Z")
 	//	project.Update()
-	//	logInfo("更新项目 %d 的最后编辑时间", projectId)
+	//	logMsg := fmt.Sprintf("[OutlineService] Updated last edit time for project %d", projectId)
+	//	common.SysLog(logMsg)
 	//}
 
 	return outline, nil
 }
 
-// GetVersionHistory 获取版本历史
+// GetVersionHistory retrieves version history
 func (s *OutlineService) GetVersionHistory(projectId int64, limit int) ([]*model.Version, error) {
 	if limit <= 0 {
 		limit = 10
-		logInfo("版本历史查询限制设置为默认值: %d", limit)
+		logMsg := fmt.Sprintf("[OutlineService] Version history query limit set to default: %d", limit)
+		common.SysLog(logMsg)
 	}
 
 	versions, err := s.outlineRepo.GetVersionHistory(projectId, limit)
 	if err != nil {
-		// 如果是新项目，可能没有版本历史
-		logInfo("项目 %d 没有版本历史记录", projectId)
+		// No version history for new projects
+		logMsg := fmt.Sprintf("[OutlineService] No version history found for project %d", projectId)
+		common.SysLog(logMsg)
 		return []*model.Version{}, nil
 	}
 
-	logInfo("成功获取项目 %d 的 %d 条版本历史记录", projectId, len(versions))
+	logMsg := fmt.Sprintf("[OutlineService] Successfully retrieved %d version history records for project %d", len(versions), projectId)
+	common.SysLog(logMsg)
 	return versions, nil
 }
 
-// GenerateOutlineWithAI 使用AI生成大纲内容
+// GenerateOutlineWithAI generates outline content using AI
 func (s *OutlineService) GenerateOutlineWithAI(userId int64, projectId int64, content string, style string, wordLimit int) (map[string]interface{}, error) {
-	logInfo("开始为项目 %d 使用AI生成大纲内容", projectId)
+	logMsg := fmt.Sprintf("[OutlineService] Starting AI outline generation for project %d", projectId)
+	common.SysLog(logMsg)
 
-	// 构造AI请求
-	systemPrompt := "你是一个专业的内容创作助手，擅长根据提供的大纲进行续写和扩展。"
+	// Construct AI request
+	systemPrompt := "You are a professional content creation assistant skilled at continuing and expanding on provided outlines."
 	if style != "" {
-		systemPrompt += "请使用" + style + "的写作风格。"
+		systemPrompt += fmt.Sprintf(" Please use a %s writing style.", style)
 	}
 
-	userPrompt := "请根据以下大纲内容进行续写和扩展："
+	userPrompt := "Please continue and expand on the following outline content:"
 	if wordLimit > 0 {
-		userPrompt += "续写内容大约" + strconv.Itoa(wordLimit) + "字。"
+		userPrompt += fmt.Sprintf(" The continuation should be approximately %d words.", wordLimit)
 	}
 	userPrompt += "\n\n" + content
 
-	// 准备OpenAI请求
+	// Prepare OpenAI request
 	openaiReq := define.GenerateAIPromptRequest{
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
-		Model:        "gpt-3.5-turbo", // 可以从设置中获取或让用户选择
-		MaxTokens:    2000,            // 根据字数限制调整
-		Temperature:  0.7,             // 创意性参数
+		Model:        "gpt-3.5-turbo", // Can be obtained from settings or user selection
+		MaxTokens:    2000,            // Adjust based on word limit
+		Temperature:  0.7,             // Creativity parameter
 	}
 
-	// 生成唯一交易ID，用于幂等性控制
+	// Generate unique transaction ID for idempotency control
 	transactionUUID := uuid.New().String()
 
-	// 调用AI服务进行续写
+	// Call AI service for continuation
 	openaiResp, err := GenerateAICompletion(openaiReq)
 	if err != nil {
-		logError("AI生成失败: %v", err)
-		return nil, fmt.Errorf("AI生成失败: %v", err)
+		logMsg := fmt.Sprintf("[OutlineService] AI generation failed: %v", err)
+		common.SysError(logMsg)
+		return nil, fmt.Errorf(logMsg)
 	}
 
-	// 获取生成内容
+	// Get generated content
 	aiGeneratedContent := openaiResp.Content
 	tokensUsed := openaiResp.TokensUsed
 
-	// 保存大纲内容，创建新版本，标记为AI生成
-	logInfo("保存AI生成的大纲内容，项目ID: %d, 使用Token: %d", projectId, tokensUsed)
+	// Save outline content, create new version, mark as AI-generated
+	logMsg = fmt.Sprintf("[OutlineService] Saving AI-generated outline content, Project ID: %d, Tokens used: %d", projectId, tokensUsed)
+	common.SysLog(logMsg)
 	_, err = s.outlineRepo.SaveOutline(projectId, content+"\n\n"+aiGeneratedContent, true, style, wordLimit, tokensUsed)
 	if err != nil {
-		logError("保存AI生成的大纲内容失败: %v", err)
+		logMsg = fmt.Sprintf("[OutlineService] Failed to save AI-generated outline content: %v", err)
+		common.SysError(logMsg)
 		return nil, err
 	}
 
-	//// 更新项目的最后编辑时间
+	//// Update project's last edit time
 	//project, err := model.GetProjectById(projectId)
 	//if err == nil {
 	//	project.LastEditedAt = time.Now().Format("2006-01-02T15:04:05Z")
 	//	project.Update()
-	//	logInfo("更新项目 %d 的最后编辑时间", projectId)
+	//	logMsg := fmt.Sprintf("[OutlineService] Updated last edit time for project %d", projectId)
+	//	common.SysLog(logMsg)
 	//}
 
-	// 扣除用户Token
-	description := fmt.Sprintf("项目[%d]大纲AI续写消耗", projectId)
+	// Deduct user tokens
+	description := fmt.Sprintf("AI outline continuation for project [%d]", projectId)
 
-	// 使用TokenService扣减用户Token
+	// Use TokenService to deduct user tokens
 	service := GetTokenService()
 	userToken, err := service.DebitToken(
 		userId,
@@ -196,25 +216,26 @@ func (s *OutlineService) GenerateOutlineWithAI(userId int64, projectId int64, co
 		"ai_generation_debit",
 		description,
 		"project",
-		string(projectId),
+		strconv.FormatInt(projectId, 10),
 	)
 
 	if err != nil {
-		// 如果扣款失败但内容已生成，记录错误日志但仍然返回生成的内容
-		// 在实际应用中，可能需要更复杂的错误处理策略
-		logError("扣减用户Token失败: %v", err)
+		// Log error but return generated content if deduction fails (needs actual error handling strategy)
+		logMsg = fmt.Sprintf("[OutlineService] Failed to deduct user tokens: %v", err)
+		common.SysError(logMsg)
 		return map[string]interface{}{
 			"content":       aiGeneratedContent,
 			"tokens_used":   tokensUsed,
-			"token_balance": 0, // 余额获取失败
-			"error":         "Token扣减失败，请联系客服",
+			"token_balance": 0, // Failed to get balance
+			"error":         "Token deduction failed, please contact support",
 		}, nil
 	}
 
-	// 获取用户最新Token余额
+	// Get user's latest token balance
 	tokenBalance := userToken.Balance
 
-	logInfo("AI生成大纲内容成功，项目ID: %d, 使用Token: %d, 剩余Token: %d", projectId, tokensUsed, tokenBalance)
+	logMsg = fmt.Sprintf("[OutlineService] AI outline generation successful, Project ID: %d, Tokens used: %d, Remaining tokens: %d", projectId, tokensUsed, tokenBalance)
+	common.SysLog(logMsg)
 	return map[string]interface{}{
 		"content":       aiGeneratedContent,
 		"tokens_used":   tokensUsed,
@@ -222,83 +243,93 @@ func (s *OutlineService) GenerateOutlineWithAI(userId int64, projectId int64, co
 	}, nil
 }
 
-// ExportOutlineToFile 导出大纲到文件
+// ExportOutlineToFile exports the outline to a file
 func (s *OutlineService) ExportOutlineToFile(projectId int64, format string) (map[string]interface{}, error) {
-	logInfo("开始导出项目 %d 的大纲到文件，格式: %s", projectId, format)
+	logMsg := fmt.Sprintf("[OutlineService] Starting to export outline for project %d to file, format: %s", projectId, format)
+	common.SysLog(logMsg)
 
-	// 检查格式
+	// Check format
 	if format != "txt" && format != "docx" && format != "pdf" {
-		logError("不支持的导出格式: %s", format)
-		return nil, fmt.Errorf("不支持的导出格式，仅支持txt、docx和pdf")
+		logMsg := fmt.Sprintf("[OutlineService] Unsupported export format: %s", format)
+		common.SysError(logMsg)
+		return nil, fmt.Errorf("Unsupported export format, only txt, docx, and pdf are allowed")
 	}
 
-	// 获取大纲内容
+	// Get outline content
 	outline, err := s.outlineRepo.GetOutlineByProjectId(projectId)
 	if err != nil {
-		logError("获取项目 %d 的大纲内容失败: %v", projectId, err)
-		return nil, fmt.Errorf("获取大纲内容失败")
+		logMsg := fmt.Sprintf("[OutlineService] Failed to get outline content for project %d: %v", projectId, err)
+		common.SysError(logMsg)
+		return nil, fmt.Errorf("Failed to get outline content")
 	}
 
-	// 生成文件名
+	// Generate file name
 	fileName := fmt.Sprintf("outline_%d_%s.%s", projectId, time.Now().Format("20060102"), format)
 	filePath := filepath.Join(common.UploadPath, fileName)
 
-	// 写入文件
+	// Write file
 	if format == "txt" {
 		err = ioutil.WriteFile(filePath, []byte(outline.Content), 0644)
 		if err != nil {
-			logError("生成文件失败: %v", err)
-			return nil, fmt.Errorf("生成文件失败: %v", err)
+			logMsg := fmt.Sprintf("[OutlineService] Failed to generate file: %v", err)
+			common.SysError(logMsg)
+			return nil, fmt.Errorf(logMsg)
 		}
 	} else {
-		// TODO: 处理docx和pdf格式导出
-		logInfo("暂不支持docx和pdf格式导出")
-		return nil, fmt.Errorf("暂不支持docx和pdf格式导出")
+		// TODO: Handle docx and pdf exports
+		logMsg := "[OutlineService] Docx and pdf format exports are not supported yet"
+		common.SysLog(logMsg)
+		return nil, fmt.Errorf(logMsg)
 	}
 
-	// 返回文件路径
+	// Return file path
 	fileUrl := "/upload/" + fileName
 	fileSize := len(outline.Content)
 
-	logInfo("成功导出项目 %d 的大纲到文件: %s", projectId, fileName)
+	logMsg = fmt.Sprintf("[OutlineService] Successfully exported outline for project %d to file: %s", projectId, fileName)
+	common.SysLog(logMsg)
 	return map[string]interface{}{
 		"file_url":  fileUrl,
 		"file_size": fileSize,
 	}, nil
 }
 
-// UploadAndParseOutlineFile 上传并解析大纲文件
+// UploadAndParseOutlineFile uploads and parses an outline file
 func (s *OutlineService) UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFileInfo, error) {
-	logInfo("开始上传并解析大纲文件: %s", fileHeader.Filename)
+	logMsg := fmt.Sprintf("[OutlineService] Starting to upload and parse outline file: %s", fileHeader.Filename)
+	common.SysLog(logMsg)
 
-	// 检查文件类型
+	// Check file type
 	filename := filepath.Base(fileHeader.Filename)
 	fileExt, valid := s.ValidateOutlineFile(filename)
 	if !valid {
-		logError("仅支持.txt和.docx格式的文件")
-		return nil, fmt.Errorf("仅支持.txt和.docx格式的文件")
+		logMsg := "[OutlineService] Only .txt and .docx files are supported"
+		common.SysError(logMsg)
+		return nil, fmt.Errorf(logMsg)
 	}
 
-	// 生成唯一文件名
+	// Generate unique file name
 	link := common.GetUUID() + fileExt
 	savePath := filepath.Join(common.UploadPath, link)
 
-	// 保存文件
+	// Save file
 	if err := fileHeader.SaveFile(savePath); err != nil {
-		logError("保存文件失败: %v", err)
-		return nil, fmt.Errorf("保存文件失败: %v", err)
+		logMsg := fmt.Sprintf("[OutlineService] Failed to save file: %v", err)
+		common.SysError(logMsg)
+		return nil, fmt.Errorf(logMsg)
 	}
 
-	// 读取文件内容
+	// Read file content
 	fileContent, err := s.ParseOutlineFile(savePath, fileExt)
 	if err != nil {
-		// 删除已保存的文件
+		// Delete saved file
 		os.Remove(savePath)
-		logError("解析文件失败，已删除保存的文件")
+		logMsg := "[OutlineService] Failed to parse file, saved file has been deleted"
+		common.SysError(logMsg)
 		return nil, err
 	}
 
-	// 构建文件信息响应
+	// Build file info response
 	fileInfo := &define.OutlineFileInfo{
 		Content:  fileContent,
 		Filename: filename,
@@ -306,6 +337,7 @@ func (s *OutlineService) UploadAndParseOutlineFile(fileHeader *define.FileHeader
 		Link:     link,
 	}
 
-	logInfo("成功上传并解析大纲文件: %s", filename)
+	logMsg = fmt.Sprintf("[OutlineService] Successfully uploaded and parsed outline file: %s", filename)
+	common.SysLog(logMsg)
 	return fileInfo, nil
 }

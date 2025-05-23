@@ -64,6 +64,7 @@ func (c *ReferralController) UseReferral(ctx *gin.Context) {
 	if err != nil {
 		common.SysError("[referral]使用推荐码失败")
 		ResponseError(ctx, err.Error())
+		return
 	}
 
 	ResponseOKWithMessage(ctx, "推荐码使用成功", result)

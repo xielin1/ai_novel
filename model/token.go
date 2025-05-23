@@ -1,16 +1,12 @@
 package model
 
-import (
-	"time"
-)
-
 // UserToken 代表用户Token余额表
 type UserToken struct {
 	UserID    int64 `gorm:"primaryKey"`
 	Balance   int64 `gorm:"default:0"`
 	Version   int64 `gorm:"default:1"` // 乐观锁版本号
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 // TableName 指定表名

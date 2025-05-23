@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"gin-template/common"
 	"gin-template/model"
+	"gin-template/service"
 	"strconv"
 	"strings"
 
@@ -120,6 +121,9 @@ func Register(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
+	//todo 优化成系统配置项，且优化成异步kafka，添加重试机制，或者放在一个事务里面
+	service.GetTokenService().InitUserTokenAccount(cleanUser.Id, 5000)
+
 	ResponseOK(c, nil)
 }
 
@@ -330,6 +334,8 @@ func CreateUser(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
+	//todo 优化成系统配置项，且优化成异步kafka，添加重试机制，或者放在一个事务里面
+	service.GetTokenService().InitUserTokenAccount(cleanUser.Id, 5000)
 
 	ResponseOK(c, nil)
 }
