@@ -25,7 +25,7 @@ func NewReferralService(referralRepo *repository.ReferralRepository, tokenServic
 // GetReferralCode 获取用户推荐码信息
 func (s *ReferralService) GetReferralCode(userId int64) (define.ReferralCodeResponse, error) {
 	resp := define.ReferralCodeResponse{}
-	// 获取用户的推荐码
+	// 获取用户推荐码
 	referral, err := s.referralRepo.GetReferralCodeByUserId(userId)
 	if err != nil {
 		common.SysError(fmt.Sprintf("get referral code err,%v", err))
@@ -42,17 +42,19 @@ func (s *ReferralService) GetReferralCode(userId int64) (define.ReferralCodeResp
 		}
 		resp.ReferralCode = newReferralCodeResp.NewCode
 		resp.ShareURL = newReferralCodeResp.ShareURL
-	}
-	resp.ReferralCode = referral
-	//todo 生成推荐链接
 
-	// 获取推荐统计信息
-	totalReferred, totalTokens, err := s.referralRepo.GetReferralStat(userId)
-	if err != nil {
-		return define.ReferralCodeResponse{}, err
+	} else {
+		resp.ReferralCode = referral
+		//todo 生成推荐链接
+
+		//已经存在，获取推荐统计信息
+		totalReferred, totalTokens, err := s.referralRepo.GetReferralStat(userId)
+		if err != nil {
+			return define.ReferralCodeResponse{}, err
+		}
+		resp.TotalReferred = totalReferred
+		resp.TotalTokensEarned = totalTokens
 	}
-	resp.TotalReferred = totalReferred
-	resp.TotalTokensEarned = totalTokens
 	return resp, nil
 }
 
@@ -68,7 +70,7 @@ func (s *ReferralService) GetReferrals(userId int64, page, limit int) (define.Re
 	referralDetails := make([]define.ReferralDetail, 0, len(referralUses))
 	for _, use := range referralUses {
 		detail := define.ReferralDetail{
-			ID:           (use["id"].(int64)),
+			ID:           use["id"].(int64),
 			ReferredName: use["username"].(string),
 			CreatedAt:    use["used_at"].(string),
 			TokensEarned: int(use["tokens_rewarded"].(float64)),
