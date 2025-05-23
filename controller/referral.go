@@ -15,9 +15,9 @@ type ReferralController struct {
 }
 
 // NewReferralController 创建推荐码控制器实例
-func NewReferralController() *ReferralController {
+func NewReferralController(referralService *service.ReferralService) *ReferralController {
 	return &ReferralController{
-		referralService: &service.ReferralService{},
+		referralService: referralService,
 	}
 }
 

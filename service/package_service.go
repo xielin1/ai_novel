@@ -13,33 +13,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// PackageService defines the interface for package-related business logic.
-type PackageService interface {
-	GetAllPackages() (define.PackageResponse, error)
-	CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error)
-	GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error)
-	CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error)
-	ValidatePackageID(packageID uint) (bool, error)
-	InitFreePackageInDB() error
-}
-
-// packageServiceImpl implements PackageService.
-type packageServiceImpl struct {
-	packageRepo  repository.PackageRepository
-	tokenService TokenService
+type PackageService struct {
+	packageRepo  *repository.PackageRepository
+	tokenService *TokenService
 }
 
 // NewPackageService creates a new instance of PackageService.
 // Note: TokenService needs to be passed as an argument once its interface is defined/available.
-func NewPackageService(repo repository.PackageRepository, tokenService TokenService) PackageService {
-	return &packageServiceImpl{
+func NewPackageService(repo *repository.PackageRepository, tokenService *TokenService) *PackageService {
+	return &PackageService{
 		packageRepo:  repo,
 		tokenService: tokenService,
 	}
 }
 
 // GetAllPackages retrieves all available packages, including the free tier.
-func (s *packageServiceImpl) GetAllPackages() (define.PackageResponse, error) {
+func (s *PackageService) GetAllPackages() (define.PackageResponse, error) {
 	dbPackages, err := s.packageRepo.GetAllPackages()
 	if err != nil {
 		return define.PackageResponse{}, fmt.Errorf("failed to get packages from repository: %w", err)
@@ -94,7 +83,7 @@ func (s *packageServiceImpl) GetAllPackages() (define.PackageResponse, error) {
 }
 
 // ValidatePackageID checks if a package ID is valid.
-func (s *packageServiceImpl) ValidatePackageID(packageID uint) (bool, error) {
+func (s *PackageService) ValidatePackageID(packageID uint) (bool, error) {
 	if packageID == model.FreePackage.Id {
 		return true, nil
 	}
@@ -120,7 +109,7 @@ func ValidatePaymentMethod(method string) bool {
 }
 
 // CreateSubscription handles the business logic for creating a new package subscription.
-func (s *packageServiceImpl) CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
+func (s *PackageService) CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
 	validPkg, err := s.ValidatePackageID(req.PackageID)
 	if err != nil {
 		return define.SubscriptionResponse{}, fmt.Errorf("error during package ID validation: %w", err)
@@ -203,7 +192,7 @@ func (s *packageServiceImpl) CreateSubscription(userID uint, req define.CreateSu
 }
 
 // GetUserCurrentPackageInfo retrieves the user's current package and subscription details.
-func (s *packageServiceImpl) GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
+func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
 	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
 	var pkg *model.Package
 
@@ -280,7 +269,7 @@ func (s *packageServiceImpl) GetUserCurrentPackageInfo(userID uint) (define.Curr
 }
 
 // CancelSubscriptionRenewal cancels the auto-renewal for a user's active subscription.
-func (s *packageServiceImpl) CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error) {
+func (s *PackageService) CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error) {
 	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -327,6 +316,6 @@ func (s *packageServiceImpl) CancelSubscriptionRenewal(userID uint) (define.Canc
 
 // InitFreePackageInDB is a utility function that could be called during application startup
 // to ensure the free package is in the database.
-func (s *packageServiceImpl) InitFreePackageInDB() error {
+func (s *PackageService) InitFreePackageInDB() error {
 	return s.packageRepo.InitFreePackage()
 }

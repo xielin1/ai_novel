@@ -13,11 +13,11 @@ import (
 
 // PackageController handles HTTP requests for package operations.
 type PackageController struct {
-	packageService service.PackageService
+	packageService *service.PackageService
 }
 
 // NewPackageController creates a new instance of PackageController.
-func NewPackageController(ps service.PackageService) *PackageController {
+func NewPackageController(ps *service.PackageService) *PackageController {
 	return &PackageController{packageService: ps}
 }
 

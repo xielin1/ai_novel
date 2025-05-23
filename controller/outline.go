@@ -3,164 +3,138 @@ package controller
 import (
 	"gin-template/define"
 	"gin-template/service"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
+	"strconv"
 )
 
-// projectService 由 controller/project.go 定义，这里复用该实例
-var _ = projectService
-
-// GetOutline 获取大纲内容
-func GetOutline(c *gin.Context) {
-	projectId, _, err := ValidateProjectOwnership(c)
-	if err != nil {
-		return // 错误已经由ValidateProjectOwnership通过ResponseError返回
-	}
-
-	// 获取大纲
-	outline, err := service.GetOutlineByProjectId(projectId)
-	if err != nil {
-		ResponseError(c, err.Error())
-		return
-	}
-
-	ResponseOK(c, outline)
+// OutlineController 大纲控制器结构体
+type OutlineController struct {
+	service *service.OutlineService // 注入的服务层实例
 }
 
-// SaveOutline 保存/更新大纲内容
-func SaveOutline(c *gin.Context) {
-	projectId, _, err := ValidateProjectOwnership(c)
+// NewOutlineController 创建大纲控制器实例（依赖注入）
+func NewOutlineController(outlineSvc *service.OutlineService) *OutlineController {
+	return &OutlineController{
+		service: outlineSvc,
+	}
+}
+
+// GetOutline 获取大纲内容（结构体方法）
+func (c *OutlineController) GetOutline(ctx *gin.Context) {
+	projectId, _, err := ValidateProjectOwnership(ctx)
+	if err != nil {
+		return // 错误处理由中间件或验证函数完成
+	}
+
+	outline, err := c.service.GetOutlineByProjectId(projectId) // 使用注入的服务实例
+	if err != nil {
+		ResponseError(ctx, err.Error())
+		return
+	}
+
+	ResponseOK(ctx, outline)
+}
+
+// SaveOutline 保存/更新大纲内容（结构体方法）
+func (c *OutlineController) SaveOutline(ctx *gin.Context) {
+	projectId, _, err := ValidateProjectOwnership(ctx)
 	if err != nil {
 		return
 	}
 
-	// 解析请求体
 	var outlineReq define.OutlineRequest
-	if err := c.ShouldBindJSON(&outlineReq); err != nil {
-		ResponseError(c, "无效的参数")
+	if err := ctx.ShouldBindJSON(&outlineReq); err != nil {
+		ResponseError(ctx, "无效的参数")
 		return
 	}
 
-	// 保存大纲内容
-	outline, err := service.SaveOutlineContent(projectId, outlineReq.Content)
+	outline, err := c.service.SaveOutlineContent(projectId, outlineReq.Content) // 使用注入的服务实例
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
 
-	ResponseOKWithMessage(c, "大纲保存成功", outline)
+	ResponseOKWithMessage(ctx, "大纲保存成功", outline)
 }
 
-// GetVersions 获取版本历史
-func GetVersions(c *gin.Context) {
-	projectId, _, err := ValidateProjectOwnership(c)
+// GetVersions 获取版本历史（结构体方法）
+func (c *OutlineController) GetVersions(ctx *gin.Context) {
+	projectId, _, err := ValidateProjectOwnership(ctx)
 	if err != nil {
 		return
 	}
 
-	// 获取版本历史
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	versions, err := service.GetVersionHistory(projectId, limit)
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	versions, err := c.service.GetVersionHistory(projectId, limit) // 使用注入的服务实例
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
 
-	ResponseOK(c, versions)
+	ResponseOK(ctx, versions)
 }
 
-// AIGenerate AI续写
-func AIGenerate(c *gin.Context) {
-	_, _, err := ValidateProjectOwnership(c)
+// AIGenerate AI续写（结构体方法）
+func (c *OutlineController) AIGenerate(ctx *gin.Context) {
+	projectId, project, err := ValidateProjectOwnership(ctx) // 假设验证函数返回用户ID
 	if err != nil {
 		return
 	}
 
-	// 解析请求体
 	var aiReq define.AIGenerateRequest
-	if err := c.ShouldBindJSON(&aiReq); err != nil {
-		ResponseError(c, "无效的参数")
+	if err := ctx.ShouldBindJSON(&aiReq); err != nil {
+		ResponseError(ctx, "无效的参数")
 		return
 	}
 
-	// 调用AI服务生成内容
-	//result, err := service.GenerateOutlineWithAI(projectId, aiReq.Content, aiReq.Style, aiReq.WordLimit)
+	result, err := c.service.GenerateOutlineWithAI( // 使用注入的服务实例
+		uint(project.UserId),
+		projectId,
+		aiReq.Content,
+		aiReq.Style,
+		aiReq.WordLimit,
+	)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
 
-	//ResponseOK(c, result)
+	ResponseOK(ctx, result)
 }
 
-// UploadOutline 上传大纲文件
-func UploadOutline(c *gin.Context) {
-	// 为了保持兼容性，调用新的 ParseOutline 函数
-	ParseOutline(c)
-}
-
-// ParseOutline 解析大纲文件（新接口）
-func ParseOutline(c *gin.Context) {
-	// 验证项目所有权（这里projectId未使用，但保留验证是必要的）
-	_, _, err := ValidateProjectOwnership(c)
+// ParseOutline 解析大纲文件（结构体方法）
+func (c *OutlineController) ParseOutline(ctx *gin.Context) {
+	// 验证项目所有权（保留必要验证）
+	_, _, err := ValidateProjectOwnership(ctx)
 	if err != nil {
 		return
 	}
 
-	// 获取上传的文件
-	form, err := c.MultipartForm()
+	form, err := ctx.MultipartForm()
 	if err != nil {
-		ResponseError(c, "文件上传失败: "+err.Error())
+		ResponseError(ctx, "文件上传失败: "+err.Error())
 		return
 	}
 
 	files := form.File["file"]
 	if len(files) == 0 {
-		ResponseError(c, "未找到上传的文件")
+		ResponseError(ctx, "未找到上传的文件")
 		return
 	}
 
-	file := files[0] // 只处理第一个文件
-
-	// 创建文件头
+	file := files[0]
 	fileHeader := &define.FileHeader{
 		FileHeader: file,
 		SaveFile: func(path string) error {
-			return c.SaveUploadedFile(file, path)
+			return ctx.SaveUploadedFile(file, path)
 		},
 	}
 
-	// 处理文件上传
-	fileInfo, err := service.UploadAndParseOutlineFile(fileHeader)
+	fileInfo, err := c.service.UploadAndParseOutlineFile(fileHeader) // 使用注入的服务实例
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
 
-	ResponseOK(c, fileInfo)
-}
-
-// ExportOutline 导出大纲
-func ExportOutline(c *gin.Context) {
-	projectId, _, err := ValidateProjectOwnership(c)
-	if err != nil {
-		return
-	}
-
-	// 解析请求体
-	var exportReq define.ExportRequest
-	if err := c.ShouldBindJSON(&exportReq); err != nil {
-		ResponseError(c, "无效的参数")
-		return
-	}
-
-	// 导出文件
-	result, err := service.ExportOutlineToFile(projectId, exportReq.Format)
-	if err != nil {
-		ResponseError(c, err.Error())
-		return
-	}
-
-	ResponseOK(c, result)
+	ResponseOK(ctx, fileInfo)
 }

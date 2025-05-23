@@ -14,26 +14,36 @@ type ProjectRequest struct {
 	Genre       string `json:"genre"`
 }
 
-var projectService = &service.ProjectService{}
+// ProjectController 项目控制器结构体
+type ProjectController struct {
+	service *service.ProjectService // 注入的服务层实例
+}
 
-// GetProjects 获取项目列表
-func GetProjects(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	
+// NewProjectController 创建项目控制器实例（依赖注入）
+func NewProjectController(projectSvc *service.ProjectService) *ProjectController {
+	return &ProjectController{
+		service: projectSvc,
+	}
+}
+
+// GetProjects 获取项目列表（结构体方法）
+func (c *ProjectController) GetProjects(ctx *gin.Context) {
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+
 	if page < 1 {
 		page = 1
 	}
-	
-	userId := c.GetInt("id")
-	
-	projects, total, err := projectService.GetUserProjects(userId, (page-1)*limit, limit)
+
+	userId := ctx.GetInt("id")
+
+	projects, total, err := c.service.GetUserProjects(userId, (page-1)*limit, limit)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
-	ResponseOK(c, gin.H{
+
+	ResponseOK(ctx, gin.H{
 		"data": projects,
 		"pagination": gin.H{
 			"total": total,
@@ -44,121 +54,121 @@ func GetProjects(c *gin.Context) {
 	})
 }
 
-// CreateProject 创建新项目
-func CreateProject(c *gin.Context) {
+// CreateProject 创建新项目（结构体方法）
+func (c *ProjectController) CreateProject(ctx *gin.Context) {
 	var projectReq ProjectRequest
-	if err := c.ShouldBindJSON(&projectReq); err != nil {
-		ResponseError(c, "无效的参数")
+	if err := ctx.ShouldBindJSON(&projectReq); err != nil {
+		ResponseError(ctx, "无效的参数")
 		return
 	}
-	
-	userId := c.GetInt("id")
-	username := c.GetString("username")
-	
+
+	userId := ctx.GetInt("id")
+	username := ctx.GetString("username")
+
 	if projectReq.Title == "" {
-		ResponseError(c, "项目标题不能为空")
+		ResponseError(ctx, "项目标题不能为空")
 		return
 	}
-	
-	project, err := projectService.CreateProject(projectReq.Title, projectReq.Description, projectReq.Genre, userId, username)
+
+	project, err := c.service.CreateProject(projectReq.Title, projectReq.Description, projectReq.Genre, userId, username)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
-	ResponseOKWithMessage(c, "项目创建成功", project)
+
+	ResponseOKWithMessage(ctx, "项目创建成功", project)
 }
 
-// GetProject 获取项目详情
-func GetProject(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+// GetProject 获取项目详情（结构体方法）
+func (c *ProjectController) GetProject(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ResponseError(c, "无效的参数")
+		ResponseError(ctx, "无效的参数")
 		return
 	}
-	
-	userId := c.GetInt("id")
-	
-	project, err := projectService.GetProjectById(id)
+
+	userId := ctx.GetInt("id")
+
+	project, err := c.service.GetProjectById(id)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
+
 	// 验证项目所有权
-	if !projectService.CheckProjectOwnership(project, userId) {
-		ResponseError(c, "无权访问该项目")
+	if !c.service.CheckProjectOwnership(project, userId) {
+		ResponseError(ctx, "无权访问该项目")
 		return
 	}
-	
-	ResponseOK(c, project)
+
+	ResponseOK(ctx, project)
 }
 
-// UpdateProject 更新项目信息
-func UpdateProject(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+// UpdateProject 更新项目信息（结构体方法）
+func (c *ProjectController) UpdateProject(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ResponseError(c, "无效的参数")
+		ResponseError(ctx, "无效的参数")
 		return
 	}
-	
-	userId := c.GetInt("id")
-	
+
+	userId := ctx.GetInt("id")
+
 	var projectReq ProjectRequest
-	if err := c.ShouldBindJSON(&projectReq); err != nil {
-		ResponseError(c, "无效的参数")
+	if err := ctx.ShouldBindJSON(&projectReq); err != nil {
+		ResponseError(ctx, "无效的参数")
 		return
 	}
-	
-	project, err := projectService.GetProjectById(id)
+
+	project, err := c.service.GetProjectById(id)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
+
 	// 验证项目所有权
-	if !projectService.CheckProjectOwnership(project, userId) {
-		ResponseError(c, "无权修改该项目")
+	if !c.service.CheckProjectOwnership(project, userId) {
+		ResponseError(ctx, "无权修改该项目")
 		return
 	}
-	
+
 	// 更新项目信息
-	err = projectService.UpdateProject(project, projectReq.Title, projectReq.Description, projectReq.Genre)
+	err = c.service.UpdateProject(project, projectReq.Title, projectReq.Description, projectReq.Genre)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
-	ResponseOKWithMessage(c, "项目更新成功", project)
+
+	ResponseOKWithMessage(ctx, "项目更新成功", project)
 }
 
-// DeleteProject 删除项目
-func DeleteProject(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+// DeleteProject 删除项目（结构体方法）
+func (c *ProjectController) DeleteProject(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ResponseError(c, "无效的参数")
+		ResponseError(ctx, "无效的参数")
 		return
 	}
-	
-	userId := c.GetInt("id")
-	
-	project, err := projectService.GetProjectById(id)
+
+	userId := ctx.GetInt("id")
+
+	project, err := c.service.GetProjectById(id)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
+
 	// 验证项目所有权
-	if !projectService.CheckProjectOwnership(project, userId) {
-		ResponseError(c, "无权删除该项目")
+	if !c.service.CheckProjectOwnership(project, userId) {
+		ResponseError(ctx, "无权删除该项目")
 		return
 	}
-	
-	err = projectService.DeleteProject(project)
+
+	err = c.service.DeleteProject(project)
 	if err != nil {
-		ResponseError(c, err.Error())
+		ResponseError(ctx, err.Error())
 		return
 	}
-	
-	ResponseOKWithMessage(c, "项目删除成功", nil)
-} 
+
+	ResponseOKWithMessage(ctx, "项目删除成功", nil)
+}

@@ -8,19 +8,9 @@ import (
 	"time"
 )
 
-// ProjectService 项目服务接口
-type ProjectService interface {
-	GetUserProjects(userId, offset, limit int) ([]*model.Project, int64, error)
-	CreateProject(title, description, genre string, userId int, username string) (*model.Project, error)
-	GetProjectById(id int) (*model.Project, error)
-	UpdateProject(project *model.Project, title, description, genre string) error
-	DeleteProject(project *model.Project) error
-	CheckProjectOwnership(project *model.Project, userId int) bool
-}
-
-// ProjectServiceImpl 项目服务实现
-type ProjectServiceImpl struct {
-	repo repository.ProjectRepository // 注入项目仓库
+// ProjectService 项目服务实现
+type ProjectService struct {
+	repo *repository.ProjectRepository // 注入项目仓库
 }
 
 // 日志前缀
@@ -41,19 +31,19 @@ func GetProjectService() ProjectService {
 }
 
 // NewProjectService 创建项目服务实例
-func NewProjectService(repo repository.ProjectRepository) ProjectService {
+func NewProjectService(repo *repository.ProjectRepository) *ProjectService {
 	common.SysLog(projectServiceLogPrefix + "初始化ProjectService")
-	return &ProjectServiceImpl{repo: repo}
+	return &ProjectService{repo: repo}
 }
 
 // GetUserProjects 获取用户项目列表
-func (s *ProjectServiceImpl) GetUserProjects(userId, offset, limit int) ([]*model.Project, int64, error) {
+func (s *ProjectService) GetUserProjects(userId, offset, limit int) ([]*model.Project, int64, error) {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("获取用户 %d 的项目列表，offset: %d, limit: %d", userId, offset, limit))
 	return s.repo.GetUserProjects(userId, offset, limit)
 }
 
 // CreateProject 创建新项目
-func (s *ProjectServiceImpl) CreateProject(title, description, genre string, userId int, username string) (*model.Project, error) {
+func (s *ProjectService) CreateProject(title, description, genre string, userId int, username string) (*model.Project, error) {
 	currentTime := time.Now().Format("2006-01-02T15:04:05Z")
 	project := &model.Project{
 		Title:        title,
@@ -75,7 +65,7 @@ func (s *ProjectServiceImpl) CreateProject(title, description, genre string, use
 }
 
 // GetProjectById 获取项目详情
-func (s *ProjectServiceImpl) GetProjectById(id int) (*model.Project, error) {
+func (s *ProjectService) GetProjectById(id int) (*model.Project, error) {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("获取项目 %d 的详情", id))
 	project, err := s.repo.GetProjectById(id)
 	if project == nil {
@@ -91,7 +81,7 @@ func (s *ProjectServiceImpl) GetProjectById(id int) (*model.Project, error) {
 }
 
 // UpdateProject 更新项目信息
-func (s *ProjectServiceImpl) UpdateProject(project *model.Project, title, description, genre string) error {
+func (s *ProjectService) UpdateProject(project *model.Project, title, description, genre string) error {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("更新项目 %d 的信息", project.Id))
 	project.Title = title
 	project.Description = description
@@ -106,7 +96,7 @@ func (s *ProjectServiceImpl) UpdateProject(project *model.Project, title, descri
 }
 
 // DeleteProject 删除项目
-func (s *ProjectServiceImpl) DeleteProject(project *model.Project) error {
+func (s *ProjectService) DeleteProject(project *model.Project) error {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("删除项目 %d", project.Id))
 	if err := s.repo.DeleteProject(project); err != nil {
 		common.SysError(projectServiceLogPrefix + fmt.Sprintf("删除项目 %d 失败: %v", project.Id, err))
@@ -117,7 +107,7 @@ func (s *ProjectServiceImpl) DeleteProject(project *model.Project) error {
 }
 
 // CheckProjectOwnership 检查项目所有权
-func (s *ProjectServiceImpl) CheckProjectOwnership(project *model.Project, userId int) bool {
+func (s *ProjectService) CheckProjectOwnership(project *model.Project, userId int) bool {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("检查用户 %d 是否拥有项目 %d", userId, project.Id))
 	result := project.UserId == userId
 	if !result {

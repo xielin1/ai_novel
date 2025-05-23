@@ -15,44 +15,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// OutlineService 定义了大纲管理的核心接口
-type OutlineService interface {
-	// ParseOutlineFile 解析上传的大纲文件内容
-	ParseOutlineFile(filePath string, fileExt string) (string, error)
-
-	// ValidateOutlineFile 验证大纲文件格式是否有效
-	ValidateOutlineFile(filename string) (string, bool)
-
-	// GetOutlineByProjectId 获取项目大纲
-	GetOutlineByProjectId(projectId int) (interface{}, error)
-
-	// SaveOutlineContent 保存大纲内容
-	SaveOutlineContent(projectId int, content string) (*model.Outline, error)
-
-	// GetVersionHistory 获取版本历史
-	GetVersionHistory(projectId int, limit int) ([]*model.Version, error)
-
-	// GenerateOutlineWithAI 使用AI生成大纲内容
-	GenerateOutlineWithAI(userId uint, projectId int, content string, style string, wordLimit int) (map[string]interface{}, error)
-
-	// ExportOutlineToFile 导出大纲到文件
-	ExportOutlineToFile(projectId int, format string) (map[string]interface{}, error)
-
-	// UploadAndParseOutlineFile 上传并解析大纲文件
-	UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFileInfo, error)
+type OutlineService struct {
+	tokenRepo   *repository.TokenRepository
+	reconRepo   *repository.TokenReconciliationRepository
+	outlineRepo *repository.OutlineRepository
 }
 
-// OutlineServiceImpl 是 OutlineService 的具体实现
-type OutlineServiceImpl struct {
-	tokenRepo   repository.TokenRepository
-	reconRepo   repository.TokenReconciliationRepository
-	outlineRepo repository.OutlineRepository
-}
-
-// NewOutlineService 创建一个新的 OutlineService 实例
-func NewOutlineService(tokenRepo repository.TokenRepository, reconRepo repository.TokenReconciliationRepository, outlineRepo repository.OutlineRepository) OutlineService {
+func NewOutlineService(tokenRepo *repository.TokenRepository, reconRepo *repository.TokenReconciliationRepository, outlineRepo *repository.OutlineRepository) *OutlineService {
 	logInfo("初始化OutlineService")
-	return &OutlineServiceImpl{
+	return &OutlineService{
 		tokenRepo:   tokenRepo,
 		reconRepo:   reconRepo,
 		outlineRepo: outlineRepo,
@@ -60,7 +31,7 @@ func NewOutlineService(tokenRepo repository.TokenRepository, reconRepo repositor
 }
 
 // ParseOutlineFile 解析上传的大纲文件内容
-func (s *OutlineServiceImpl) ParseOutlineFile(filePath string, fileExt string) (string, error) {
+func (s *OutlineService) ParseOutlineFile(filePath string, fileExt string) (string, error) {
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		logError("文件不存在: %s", filePath)
@@ -88,7 +59,7 @@ func (s *OutlineServiceImpl) ParseOutlineFile(filePath string, fileExt string) (
 }
 
 // ValidateOutlineFile 验证大纲文件格式是否有效
-func (s *OutlineServiceImpl) ValidateOutlineFile(filename string) (string, bool) {
+func (s *OutlineService) ValidateOutlineFile(filename string) (string, bool) {
 	fileExt := filepath.Ext(filename)
 	if fileExt != ".txt" && fileExt != ".docx" {
 		logInfo("文件格式无效: %s", filename)
@@ -99,7 +70,7 @@ func (s *OutlineServiceImpl) ValidateOutlineFile(filename string) (string, bool)
 }
 
 // GetOutlineByProjectId 获取项目大纲
-func (s *OutlineServiceImpl) GetOutlineByProjectId(projectId int) (interface{}, error) {
+func (s *OutlineService) GetOutlineByProjectId(projectId int) (interface{}, error) {
 	outline, err := s.outlineRepo.GetOutlineByProjectId(projectId)
 	if err != nil {
 		// 如果是新项目，可能没有大纲
@@ -120,7 +91,7 @@ func (s *OutlineServiceImpl) GetOutlineByProjectId(projectId int) (interface{}, 
 }
 
 // SaveOutlineContent 保存大纲内容
-func (s *OutlineServiceImpl) SaveOutlineContent(projectId int, content string) (*model.Outline, error) {
+func (s *OutlineService) SaveOutlineContent(projectId int, content string) (*model.Outline, error) {
 	// 保存大纲内容，创建新版本，非AI生成
 	logInfo("保存项目 %d 的大纲内容", projectId)
 	outline, err := s.outlineRepo.SaveOutline(projectId, content, false, "", 0, 0)
@@ -141,7 +112,7 @@ func (s *OutlineServiceImpl) SaveOutlineContent(projectId int, content string) (
 }
 
 // GetVersionHistory 获取版本历史
-func (s *OutlineServiceImpl) GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
+func (s *OutlineService) GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
 	if limit <= 0 {
 		limit = 10
 		logInfo("版本历史查询限制设置为默认值: %d", limit)
@@ -159,7 +130,7 @@ func (s *OutlineServiceImpl) GetVersionHistory(projectId int, limit int) ([]*mod
 }
 
 // GenerateOutlineWithAI 使用AI生成大纲内容
-func (s *OutlineServiceImpl) GenerateOutlineWithAI(userId uint, projectId int, content string, style string, wordLimit int) (map[string]interface{}, error) {
+func (s *OutlineService) GenerateOutlineWithAI(userId uint, projectId int, content string, style string, wordLimit int) (map[string]interface{}, error) {
 	logInfo("开始为项目 %d 使用AI生成大纲内容", projectId)
 
 	// 构造AI请求
@@ -218,7 +189,8 @@ func (s *OutlineServiceImpl) GenerateOutlineWithAI(userId uint, projectId int, c
 	projectIdStr := strconv.Itoa(projectId)
 
 	// 使用TokenService扣减用户Token
-	userToken, err := GetTokenService().DebitToken(
+	service := GetTokenService()
+	userToken, err := service.DebitToken(
 		userId,
 		int64(tokensUsed),
 		transactionUUID,
@@ -252,7 +224,7 @@ func (s *OutlineServiceImpl) GenerateOutlineWithAI(userId uint, projectId int, c
 }
 
 // ExportOutlineToFile 导出大纲到文件
-func (s *OutlineServiceImpl) ExportOutlineToFile(projectId int, format string) (map[string]interface{}, error) {
+func (s *OutlineService) ExportOutlineToFile(projectId int, format string) (map[string]interface{}, error) {
 	logInfo("开始导出项目 %d 的大纲到文件，格式: %s", projectId, format)
 
 	// 检查格式
@@ -297,7 +269,7 @@ func (s *OutlineServiceImpl) ExportOutlineToFile(projectId int, format string) (
 }
 
 // UploadAndParseOutlineFile 上传并解析大纲文件
-func (s *OutlineServiceImpl) UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFileInfo, error) {
+func (s *OutlineService) UploadAndParseOutlineFile(fileHeader *define.FileHeader) (*define.OutlineFileInfo, error) {
 	logInfo("开始上传并解析大纲文件: %s", fileHeader.Filename)
 
 	// 检查文件类型

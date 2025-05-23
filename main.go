@@ -39,6 +39,10 @@ func main() {
 			common.FatalLog(err)
 		}
 	}()
+	controllers, err1 := InitializeAllController(model.DB)
+	if err1 != nil {
+		common.FatalLog(err1)
+	}
 
 	// Initialize Redis
 	err = common.InitRedisClient()
@@ -64,7 +68,7 @@ func main() {
 		server.Use(sessions.Sessions("session", store))
 	}
 
-	router.SetRouter(server, buildFS, indexPage)
+	router.SetRouter(server, buildFS, indexPage, controllers)
 	var port = os.Getenv("PORT")
 	if port == "" {
 		port = strconv.Itoa(*common.Port)

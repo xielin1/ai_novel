@@ -4,34 +4,33 @@
 package main
 
 import (
+	"gin-template/controller"
 	"gin-template/repository"
+	"gin-template/router"
 	"gin-template/service"
-	"gorm.io/gorm"
-
 	"github.com/google/wire"
+	"gorm.io/gorm"
 )
 
-// 新增 app_struct.go
-type AppStruct struct {
-	TokenService    service.TokenService
-	OutlineService  service.OutlineService
-	ProjectService  service.ProjectService
-	ReferralService service.ReferralService
-}
-
-func InitializeAllServices(db *gorm.DB) *AppStruct {
+func InitializeAllController(db *gorm.DB) (*router.APIControllers, error) {
 	panic(wire.Build(
-		// 依赖集合
+		ControllerSet,
+		ServiceSet,
 		RepositorySet,
-		TokenServiceSet,
-		OutlineServiceSet,
-		ProjectServiceSet,
-		ReferralServiceSet,
-
 		// 创建聚合结构体（自动绑定所有字段）
-		wire.Struct(new(AppStruct), "*"),
+		wire.Struct(new(router.APIControllers), "*"),
 	))
+	return &router.APIControllers{}, nil
 }
+
+// ServiceSet 大纲服务集合
+var ServiceSet = wire.NewSet(
+	service.NewOutlineService,
+	service.NewTokenService,
+	service.NewProjectService,
+	service.NewReferralService,
+	service.NewPackageService,
+)
 
 // repository.RepositorySet 基础仓库集合
 var RepositorySet = wire.NewSet(
@@ -40,32 +39,13 @@ var RepositorySet = wire.NewSet(
 	repository.NewOutlineRepository,
 	repository.NewProjectRepository,
 	repository.NewReferralRepository,
+	repository.NewPackageRepository,
 )
 
-// TokenServiceSet Token服务集合
-var TokenServiceSet = wire.NewSet(
-	service.NewTokenService,
+// 控制器依赖注入集合
+var ControllerSet = wire.NewSet(
+	controller.NewReferralController,
+	controller.NewProjectController,
+	controller.NewOutlineController,
+	controller.NewPackageController,
 )
-
-// OutlineServiceSet 大纲服务集合
-var OutlineServiceSet = wire.NewSet(
-	service.NewOutlineService,
-)
-
-// ProjectServiceSet 项目服务集合
-var ProjectServiceSet = wire.NewSet(
-	service.NewProjectService)
-
-// ReferralServiceSet 推荐码服务集合
-var ReferralServiceSet = wire.NewSet(
-	service.NewReferralService,
-)
-
-//// setGlobalServices 设置全局服务实例（如果需要）
-//func setGlobalServices(
-//	tokenService service.TokenService,
-//	projectService service.ProjectService,
-//) {
-//	service.SetTokenService(tokenService)
-//	service.SetProjectService(projectService)
-//}

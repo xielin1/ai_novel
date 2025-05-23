@@ -10,30 +10,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// ReferralService 推荐码服务接口
-type ReferralService interface {
-	GetReferralCode(userId uint) (define.ReferralCodeResponse, error)
-	GetReferrals(userId uint, page, limit int) (define.ReferralsListResponse, error)
-	GenerateNewCode(userId uint) (define.NewReferralCodeResponse, error)
-	UseReferralCode(userId uint, code string) (define.UseReferralCodeResponse, error)
-}
-
-// ReferralServiceImpl 推荐码服务实现
-type ReferralServiceImpl struct {
+type ReferralService struct {
 	referralRepo *repository.ReferralRepository // 注入推荐码仓库
-	tokenService TokenService                   // 注入Token服务
+	tokenService *TokenService                  // 注入Token服务
 }
 
 // NewReferralService 创建推荐码服务实例
-func NewReferralService(referralRepo *repository.ReferralRepository, tokenService TokenService) ReferralService {
-	return &ReferralServiceImpl{
+func NewReferralService(referralRepo *repository.ReferralRepository, tokenService *TokenService) *ReferralService {
+	return &ReferralService{
 		referralRepo: referralRepo,
 		tokenService: tokenService,
 	}
 }
 
 // GetReferralCode 获取用户推荐码信息
-func (s *ReferralServiceImpl) GetReferralCode(userId uint) (define.ReferralCodeResponse, error) {
+func (s *ReferralService) GetReferralCode(userId uint) (define.ReferralCodeResponse, error) {
 	// 获取用户的推荐码（通过仓库）
 	referral, err := s.referralRepo.GetReferralByUserId(userId)
 	if err != nil {
@@ -68,7 +59,7 @@ func (s *ReferralServiceImpl) GetReferralCode(userId uint) (define.ReferralCodeR
 }
 
 // GetReferrals 获取用户的推荐记录
-func (s *ReferralServiceImpl) GetReferrals(userId uint, page, limit int) (define.ReferralsListResponse, error) {
+func (s *ReferralService) GetReferrals(userId uint, page, limit int) (define.ReferralsListResponse, error) {
 	// 获取推荐记录（通过仓库）
 	referralUses, totalCount, err := s.referralRepo.GetReferrals(userId, page, limit)
 	if err != nil {
@@ -113,7 +104,7 @@ func (s *ReferralServiceImpl) GetReferrals(userId uint, page, limit int) (define
 }
 
 // GenerateNewCode 为用户生成新的推荐码
-func (s *ReferralServiceImpl) GenerateNewCode(userId uint) (define.NewReferralCodeResponse, error) {
+func (s *ReferralService) GenerateNewCode(userId uint) (define.NewReferralCodeResponse, error) {
 	// 生成新推荐码（通过仓库）
 	newReferral, err := s.referralRepo.GenerateNewReferralCode(userId)
 	if err != nil {
@@ -138,7 +129,7 @@ func (s *ReferralServiceImpl) GenerateNewCode(userId uint) (define.NewReferralCo
 }
 
 // UseReferralCode 使用他人的推荐码
-func (s *ReferralServiceImpl) UseReferralCode(userId uint, code string) (define.UseReferralCodeResponse, error) {
+func (s *ReferralService) UseReferralCode(userId uint, code string) (define.UseReferralCodeResponse, error) {
 	// 使用推荐码（通过仓库，返回奖励的Token数量）
 	tokensRewarded, err := s.referralRepo.UseReferralCode(userId, code)
 	if err != nil {

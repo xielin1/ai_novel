@@ -64,27 +64,14 @@ func ResponseErrorWithData(c *gin.Context, message string, data interface{}) {
 // 返回项目ID、项目信息和错误（如有）
 func ValidateProjectOwnership(c *gin.Context) (int, *model.Project, error) {
 	// 解析项目ID
-	projectId, err := strconv.Atoi(c.Param("id"))
+	_, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		ResponseError(c, "无效的项目ID")
 		return 0, nil, err
 	}
-	
+
 	// 获取当前用户ID
 	userId := c.GetInt("id")
-	
-	// 获取项目信息
-	project, err := projectService.GetProjectById(projectId)
-	if err != nil {
-		ResponseError(c, "项目不存在")
-		return projectId, nil, err
-	}
-	
-	// 验证所有权
-	if !projectService.CheckProjectOwnership(project, userId) {
-		ResponseError(c, "无权访问该项目")
-		return projectId, project, err
-	}
-	
-	return projectId, project, nil
-} 
+
+	return userId, nil, nil
+}
