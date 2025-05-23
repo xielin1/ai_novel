@@ -10,7 +10,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -115,7 +114,7 @@ func GitHubOAuth(c *gin.Context) {
 		}
 	} else {
 		if common.RegisterEnabled {
-			user.Username = "github_" + strconv.Itoa(model.GetMaxUserId()+1)
+			user.Username = "github_" + string(model.GetMaxUserId()+1)
 			if githubUser.Name != "" {
 				user.DisplayName = githubUser.Name
 			} else {
@@ -181,7 +180,7 @@ func GitHubBind(c *gin.Context) {
 	session := sessions.Default(c)
 	id := session.Get("id")
 	// id := c.GetInt("id")  // critical bug!
-	user.Id = id.(int)
+	user.Id = id.(int64)
 	err = user.FillUserById()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{

@@ -27,7 +27,7 @@ func (c *ProjectController) GetProjects(ctx *gin.Context) {
 		page = 1
 	}
 
-	userId := ctx.GetInt("id")
+	userId := ctx.GetInt64("id")
 
 	projects, total, err := c.service.GetUserProjects(userId, (page-1)*limit, limit)
 	if err != nil {
@@ -46,7 +46,7 @@ func (c *ProjectController) CreateProject(ctx *gin.Context) {
 		return
 	}
 
-	userId := ctx.GetInt("id")
+	userId := ctx.GetInt64("id")
 	username := ctx.GetString("username")
 
 	project, err := c.service.CreateProject(projectReq.Title, projectReq.Description, projectReq.Genre, userId, username)
@@ -66,7 +66,7 @@ func (c *ProjectController) GetProject(ctx *gin.Context) {
 		return
 	}
 
-	userId := ctx.GetInt("id")
+	userId := ctx.GetInt64("id")
 
 	project, err := c.service.GetProjectById(id)
 	if err != nil {
@@ -91,7 +91,7 @@ func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 		return
 	}
 
-	userId := ctx.GetInt("id")
+	userId := ctx.GetInt64("id")
 
 	var projectReq define.ProjectRequest
 	if err := ctx.ShouldBindJSON(&projectReq); err != nil {
@@ -129,7 +129,7 @@ func (c *ProjectController) DeleteProject(ctx *gin.Context) {
 		return
 	}
 
-	userId := ctx.GetInt("id")
+	userId := ctx.GetInt64("id")
 
 	project, err := c.service.GetProjectById(id)
 	if err != nil {

@@ -23,7 +23,7 @@ func NewTokenRepository(db *gorm.DB) *TokenRepository {
 }
 
 // GetUserToken 获取用户Token余额
-func (r *TokenRepository) GetUserToken(userID uint) (*model.UserToken, error) {
+func (r *TokenRepository) GetUserToken(userID int64) (*model.UserToken, error) {
 	var userToken model.UserToken
 	err := r.DB.Where("user_id = ?", userID).First(&userToken).Error
 	if err != nil {
@@ -36,7 +36,7 @@ func (r *TokenRepository) GetUserToken(userID uint) (*model.UserToken, error) {
 }
 
 // InitUserTokenAccount 初始化用户Token账户
-func (r *TokenRepository) InitUserTokenAccount(userID uint, initialBalance int64) (*model.UserToken, error) {
+func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int64) (*model.UserToken, error) {
 	userToken := &model.UserToken{
 		UserID:  userID,
 		Balance: initialBalance,
@@ -66,7 +66,7 @@ func (r *TokenRepository) GetTransactionByUUID(transactionUUID string) (*model.T
 
 // ModifyTokenBalanceWithTransaction 在事务中修改用户Token余额
 // amount 为正表示增加，为负表示减少
-func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID uint, amount int64, transactionUUID string,
+func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID int64, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
 
 	// 1. 使用悲观锁获取用户Token信息
@@ -130,7 +130,7 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 }
 
 // CreditUserToken 增加用户Token余额
-func (r *TokenRepository) CreditUserToken(userID uint, amount int64, transactionUUID string,
+func (r *TokenRepository) CreditUserToken(userID int64, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
 
 	if amount <= 0 {
@@ -185,7 +185,7 @@ func (r *TokenRepository) CreditUserToken(userID uint, amount int64, transaction
 }
 
 // DebitUserToken 扣减用户Token余额
-func (r *TokenRepository) DebitUserToken(userID uint, amount int64, transactionUUID string,
+func (r *TokenRepository) DebitUserToken(userID int64, amount int64, transactionUUID string,
 	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
 
 	if amount <= 0 {
@@ -240,7 +240,7 @@ func (r *TokenRepository) DebitUserToken(userID uint, amount int64, transactionU
 }
 
 // GetTokenBalance 获取用户当前Token余额
-func (r *TokenRepository) GetTokenBalance(userID uint) (int64, error) {
+func (r *TokenRepository) GetTokenBalance(userID int64) (int64, error) {
 	userToken, err := r.GetUserToken(userID)
 	if err != nil {
 		return 0, err
@@ -249,7 +249,7 @@ func (r *TokenRepository) GetTokenBalance(userID uint) (int64, error) {
 }
 
 // GetUserTokenTransactions 获取用户Token交易记录
-func (r *TokenRepository) GetUserTokenTransactions(userID uint, page, limit int) ([]model.TokenTransaction, int64, error) {
+func (r *TokenRepository) GetUserTokenTransactions(userID int64, page, limit int) ([]model.TokenTransaction, int64, error) {
 	var transactions []model.TokenTransaction
 	var total int64
 

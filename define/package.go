@@ -2,7 +2,7 @@ package define
 
 // 套餐基本信息
 type PackageInfo struct {
-	ID            uint     `json:"id"`
+	ID            int64    `json:"id"`
 	Name          string   `json:"name"`
 	Description   string   `json:"description"`
 	Price         float64  `json:"price"`
@@ -18,8 +18,8 @@ type PackageResponse struct {
 
 // 订阅信息
 type SubscriptionInfo struct {
-	PackageID   uint   `json:"package_id"`
-	UserID      uint   `json:"user_id"`
+	PackageID   int64  `json:"package_id"`
+	UserID      int64  `json:"user_id"`
 	Status      string `json:"status"` // active, expired, cancelled
 	StartDate   int64  `json:"start_date"`
 	ExpiryDate  int64  `json:"expiry_date"`
@@ -29,7 +29,7 @@ type SubscriptionInfo struct {
 
 // 订阅请求结构
 type CreateSubscriptionRequest struct {
-	PackageID     uint   `json:"package_id" binding:"required"`
+	PackageID     int64  `json:"package_id" binding:"required"`
 	PaymentMethod string `json:"payment_method" binding:"required"`
 }
 

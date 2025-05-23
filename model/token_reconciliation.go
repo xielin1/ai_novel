@@ -2,8 +2,8 @@ package model
 
 // TokenReconciliationRecord Token对账记录
 type TokenReconciliationRecord struct {
-	ID                uint  `gorm:"primaryKey;autoIncrement"`
-	UserID            uint  `gorm:"index;not null"`
+	ID                int64 `gorm:"primaryKey;autoIncrement"`
+	UserID            int64 `gorm:"index;not null"`
 	CurrentBalance    int64 `gorm:"not null"`
 	CalculatedBalance int64 `gorm:"not null"`
 	Discrepancy       int64 `gorm:"not null"` // 当前余额 - 计算余额

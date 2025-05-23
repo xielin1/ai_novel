@@ -50,7 +50,7 @@ func NewTokenService(tokenRepo *repository.TokenRepository) *TokenService {
 }
 
 // InitUserTokenAccount 初始化用户的Token账户
-func (s *TokenService) InitUserTokenAccount(userID uint, initialBalance int64) (*model.UserToken, error) {
+func (s *TokenService) InitUserTokenAccount(userID int64, initialBalance int64) (*model.UserToken, error) {
 	logInfo("初始化用户 %d 的Token账户，初始余额: %d", userID, initialBalance)
 	userToken, err := s.tokenRepo.InitUserTokenAccount(userID, initialBalance)
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *TokenService) InitUserTokenAccount(userID uint, initialBalance int64) (
 }
 
 // GetBalance 获取用户当前Token余额
-func (s *TokenService) GetBalance(userID uint) (int64, error) {
+func (s *TokenService) GetBalance(userID int64) (int64, error) {
 	balance, err := s.tokenRepo.GetTokenBalance(userID)
 	if err != nil {
 		logError("获取用户 %d 的Token余额失败: %v", userID, err)
@@ -72,7 +72,7 @@ func (s *TokenService) GetBalance(userID uint) (int64, error) {
 }
 
 // GetUserToken 获取用户Token账户详情
-func (s *TokenService) GetUserToken(userID uint) (*model.UserToken, error) {
+func (s *TokenService) GetUserToken(userID int64) (*model.UserToken, error) {
 	userToken, err := s.tokenRepo.GetUserToken(userID)
 	if err != nil {
 		logError("获取用户 %d 的Token账户失败: %v", userID, err)
@@ -87,7 +87,7 @@ func (s *TokenService) GetTransactionByUUID(transactionUUID string) (*model.Toke
 }
 
 // CreditToken 给用户增加Token
-func (s *TokenService) CreditToken(userID uint, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
+func (s *TokenService) CreditToken(userID int64, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
 	if amount <= 0 {
 		logError("增加Token金额必须为正数，用户: %d, 金额: %d", userID, amount)
 		return nil, fmt.Errorf("增加金额必须为正数")
@@ -106,7 +106,7 @@ func (s *TokenService) CreditToken(userID uint, amount int64, transactionUUID st
 }
 
 // DebitToken 扣除用户Token
-func (s *TokenService) DebitToken(userID uint, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
+func (s *TokenService) DebitToken(userID int64, amount int64, transactionUUID string, transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
 	if amount <= 0 {
 		logError("扣减Token金额必须为正数，用户: %d, 金额: %d", userID, amount)
 		return nil, fmt.Errorf("扣减金额必须为正数")
@@ -125,7 +125,7 @@ func (s *TokenService) DebitToken(userID uint, amount int64, transactionUUID str
 }
 
 // GetUserTransactions 获取用户交易记录
-func (s *TokenService) GetUserTransactions(userID uint, page, limit int) ([]model.TokenTransaction, int64, error) {
+func (s *TokenService) GetUserTransactions(userID int64, page, limit int) ([]model.TokenTransaction, int64, error) {
 	logInfo("获取用户 %d 的交易记录，页码: %d, 每页数量: %d", userID, page, limit)
 	transactions, total, err := s.tokenRepo.GetUserTokenTransactions(userID, page, limit)
 	if err != nil {

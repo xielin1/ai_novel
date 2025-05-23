@@ -37,13 +37,13 @@ func NewProjectService(repo *repository.ProjectRepository) *ProjectService {
 }
 
 // GetUserProjects 获取用户项目列表
-func (s *ProjectService) GetUserProjects(userId, offset, limit int) ([]*model.Project, int64, error) {
+func (s *ProjectService) GetUserProjects(userId int64, offset, limit int) ([]*model.Project, int64, error) {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("获取用户 %d 的项目列表，offset: %d, limit: %d", userId, offset, limit))
 	return s.repo.GetUserProjects(userId, offset, limit)
 }
 
 // CreateProject 创建新项目
-func (s *ProjectService) CreateProject(title, description, genre string, userId int, username string) (*model.Project, error) {
+func (s *ProjectService) CreateProject(title, description, genre string, userId int64, username string) (*model.Project, error) {
 	project := &model.Project{
 		Title:        title,
 		Description:  description,
@@ -103,7 +103,7 @@ func (s *ProjectService) DeleteProject(project *model.Project) error {
 }
 
 // CheckProjectOwnership 检查项目所有权
-func (s *ProjectService) CheckProjectOwnership(project *model.Project, userId int) bool {
+func (s *ProjectService) CheckProjectOwnership(project *model.Project, userId int64) bool {
 	common.SysLog(projectServiceLogPrefix + fmt.Sprintf("检查用户 %d 是否拥有项目 %d", userId, project.Id))
 	result := project.UserId == userId
 	if !result {

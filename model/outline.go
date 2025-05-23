@@ -2,8 +2,8 @@ package model
 
 // Outline 大纲模型
 type Outline struct {
-	Id             int    `json:"id"`
-	ProjectId      int    `json:"project_id" gorm:"index"`
+	Id             int64  `json:"id"`
+	ProjectId      int64  `json:"project_id" gorm:"index"`
 	Content        string `json:"content" gorm:"type:text"`
 	CurrentVersion int    `json:"current_version"`
 	CreatedAt      int64  `json:"created_at"`
@@ -12,8 +12,8 @@ type Outline struct {
 
 // Version 版本历史模型
 type Version struct {
-	Id            int    `json:"id"`
-	OutlineId     int    `json:"outline_id" gorm:"index"`
+	Id            int64  `json:"id"`
+	OutlineId     int64  `json:"outline_id" gorm:"index"`
 	VersionNumber int    `json:"version_number"`
 	Content       string `json:"content" gorm:"type:text"`
 	IsAiGenerated bool   `json:"is_ai_generated"`

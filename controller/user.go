@@ -95,7 +95,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
-		ResponseError(c, "输入不合法 " + err.Error())
+		ResponseError(c, "输入不合法 "+err.Error())
 		return
 	}
 	if common.EmailVerificationEnabled {
@@ -152,7 +152,7 @@ func GetUser(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
-	user, err := model.GetUserById(id, false)
+	user, err := model.GetUserById(int64(id), false)
 	if err != nil {
 		ResponseError(c, err.Error())
 		return
@@ -166,7 +166,7 @@ func GetUser(c *gin.Context) {
 }
 
 func GenerateToken(c *gin.Context) {
-	id := c.GetInt("id")
+	id := c.GetInt64("id")
 	user, err := model.GetUserById(id, true)
 	if err != nil {
 		ResponseError(c, err.Error())
@@ -189,7 +189,7 @@ func GenerateToken(c *gin.Context) {
 }
 
 func GetSelf(c *gin.Context) {
-	id := c.GetInt("id")
+	id := c.GetInt64("id")
 	user, err := model.GetUserById(id, false)
 	if err != nil {
 		ResponseError(c, err.Error())
@@ -209,7 +209,7 @@ func UpdateUser(c *gin.Context) {
 		updatedUser.Password = "$I_LOVE_U" // make Validator happy :)
 	}
 	if err := common.Validate.Struct(&updatedUser); err != nil {
-		ResponseError(c, "输入不合法 " + err.Error())
+		ResponseError(c, "输入不合法 "+err.Error())
 		return
 	}
 	originUser, err := model.GetUserById(updatedUser.Id, false)
@@ -248,12 +248,12 @@ func UpdateSelf(c *gin.Context) {
 		user.Password = "$I_LOVE_U" // make Validator happy :)
 	}
 	if err := common.Validate.Struct(&user); err != nil {
-		ResponseError(c, "输入不合法 " + err.Error())
+		ResponseError(c, "输入不合法 "+err.Error())
 		return
 	}
 
 	cleanUser := model.User{
-		Id:          c.GetInt("id"),
+		Id:          c.GetInt64("id"),
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.DisplayName,
@@ -277,7 +277,7 @@ func DeleteUser(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
-	originUser, err := model.GetUserById(id, false)
+	originUser, err := model.GetUserById(int64(id), false)
 	if err != nil {
 		ResponseError(c, err.Error())
 		return
@@ -287,7 +287,7 @@ func DeleteUser(c *gin.Context) {
 		ResponseError(c, "无权删除同权限等级或更高权限等级的用户")
 		return
 	}
-	err = model.DeleteUserById(id)
+	err = model.DeleteUserById(int64(id))
 	if err != nil {
 		ResponseError(c, err.Error())
 		return
@@ -296,7 +296,7 @@ func DeleteUser(c *gin.Context) {
 }
 
 func DeleteSelf(c *gin.Context) {
-	id := c.GetInt("id")
+	id := c.GetInt64("id")
 	err := model.DeleteUserById(id)
 	if err != nil {
 		ResponseError(c, err.Error())
@@ -420,7 +420,7 @@ func EmailBind(c *gin.Context) {
 		ResponseError(c, "验证码错误或已过期")
 		return
 	}
-	id := c.GetInt("id")
+	id := c.GetInt64("id")
 	user := model.User{
 		Id: id,
 	}

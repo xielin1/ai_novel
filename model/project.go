@@ -2,11 +2,11 @@ package model
 
 // Project 项目模型
 type Project struct {
-	Id           int    `json:"id"`
+	Id           int64  `json:"id"`
 	Title        string `json:"title" gorm:"index"`
 	Description  string `json:"description"`
 	Genre        string `json:"genre"`
-	UserId       int    `json:"user_id" gorm:"index"`
+	UserId       int64  `json:"user_id" gorm:"index"`
 	Username     string `json:"username" gorm:"index"`
 	CreatedAt    int64  `json:"created_at"`
 	UpdatedAt    int64  `json:"updated_at"`

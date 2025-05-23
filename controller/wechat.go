@@ -8,7 +8,6 @@ import (
 	"gin-template/model"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -80,7 +79,7 @@ func WeChatAuth(c *gin.Context) {
 		}
 	} else {
 		if common.RegisterEnabled {
-			user.Username = "wechat_" + strconv.Itoa(model.GetMaxUserId()+1)
+			user.Username = "wechat_" + string(model.GetMaxUserId()+1)
 			user.DisplayName = "WeChat User"
 			user.Role = common.RoleCommonUser
 			user.Status = common.UserStatusEnabled
@@ -135,7 +134,7 @@ func WeChatBind(c *gin.Context) {
 		})
 		return
 	}
-	id := c.GetInt("id")
+	id := c.GetInt64("id")
 	user := model.User{
 		Id: id,
 	}

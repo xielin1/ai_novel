@@ -142,7 +142,7 @@ func (s *TokenReconciliationService) performReconciliation() {
 		userBatch := userIDs[i:end]
 		wg.Add(1)
 
-		go func(users []uint) {
+		go func(users []int64) {
 			defer wg.Done()
 			s.reconcileUserBatch(users, discrepancies)
 		}(userBatch)
@@ -156,14 +156,14 @@ func (s *TokenReconciliationService) performReconciliation() {
 }
 
 // getAllUserIDs 获取所有拥有Token账户的用户ID
-func (s *TokenReconciliationService) getAllUserIDs() ([]uint, error) {
-	var userIDs []uint
+func (s *TokenReconciliationService) getAllUserIDs() ([]int64, error) {
+	var userIDs []int64
 	err := model.DB.Model(&model.UserToken{}).Pluck("user_id", &userIDs).Error
 	return userIDs, err
 }
 
 // reconcileUserBatch 对一批用户进行对账
-func (s *TokenReconciliationService) reconcileUserBatch(userIDs []uint, discrepancies chan<- string) {
+func (s *TokenReconciliationService) reconcileUserBatch(userIDs []int64, discrepancies chan<- string) {
 	for _, userID := range userIDs {
 		// 1. 获取用户当前Token余额
 		userToken, err := s.tokenRepo.GetUserToken(userID)
@@ -221,7 +221,7 @@ func (s *TokenReconciliationService) reconcileUserBatch(userIDs []uint, discrepa
 }
 
 // calculateUserBalanceFromTransactions 根据交易记录计算用户余额
-func (s *TokenReconciliationService) calculateUserBalanceFromTransactions(userID uint) (int64, error) {
+func (s *TokenReconciliationService) calculateUserBalanceFromTransactions(userID int64) (int64, error) {
 	var totalAmount int64
 
 	// 这里我们不使用分页，直接获取所有记录
@@ -241,7 +241,7 @@ func (s *TokenReconciliationService) calculateUserBalanceFromTransactions(userID
 
 // fixBalanceDiscrepancy 修复用户余额不匹配
 // 警告: 谨慎启用此功能，最好在确认有问题的情况下手动修复
-func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID uint, currentBalance, calculatedBalance int64) bool {
+func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID int64, currentBalance, calculatedBalance int64) bool {
 	reconciliationLogInfo("开始修复用户 %d 的余额不匹配: 当前=%d, 计算=%d", userID, currentBalance, calculatedBalance)
 
 	// 创建一个调整交易记录
@@ -313,7 +313,7 @@ func ReconcileAllTokens() error {
 }
 
 // ReconcileUserToken 对特定用户进行对账
-func ReconcileUserToken(userID uint) error {
+func ReconcileUserToken(userID int64) error {
 	if tokenReconciliationService == nil {
 		return fmt.Errorf("Token对账服务尚未初始化")
 	}
@@ -332,7 +332,7 @@ func ReconcileUserToken(userID uint) error {
 	}()
 
 	// 执行对账
-	tokenReconciliationService.reconcileUserBatch([]uint{userID}, discrepancies)
+	tokenReconciliationService.reconcileUserBatch([]int64{userID}, discrepancies)
 	close(discrepancies)
 
 	if len(issues) > 0 {

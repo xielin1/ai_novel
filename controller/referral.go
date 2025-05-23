@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"gin-template/define"
 	"strconv"
 
 	"gin-template/common"
@@ -9,24 +10,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ReferralController 推荐码控制器
 type ReferralController struct {
 	referralService *service.ReferralService
 }
 
-// NewReferralController 创建推荐码控制器实例
 func NewReferralController(referralService *service.ReferralService) *ReferralController {
 	return &ReferralController{
 		referralService: referralService,
 	}
 }
 
-// 获取个人推荐码
 func (c *ReferralController) GetReferralCode(ctx *gin.Context) {
 	// 获取当前用户ID
-	userId := ctx.GetUint("id")
-
-	// 使用服务层获取推荐码信息
+	userId := ctx.GetInt64("id")
 	result, err := c.referralService.GetReferralCode(userId)
 	if err != nil {
 		common.SysError("[referral]获取推荐码失败")
@@ -36,10 +32,9 @@ func (c *ReferralController) GetReferralCode(ctx *gin.Context) {
 	ResponseOK(ctx, result)
 }
 
-// 获取推荐记录
 func (c *ReferralController) GetReferrals(ctx *gin.Context) {
 	// 获取当前用户ID
-	userId := ctx.GetUint("id")
+	userId := ctx.GetInt64("id")
 
 	// 获取分页参数
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
@@ -55,50 +50,20 @@ func (c *ReferralController) GetReferrals(ctx *gin.Context) {
 
 	ResponseOK(ctx, result)
 }
-
-// 生成新的推荐码
-func (c *ReferralController) GenerateReferralCode(ctx *gin.Context) {
-	// 获取当前用户ID
-	userId := ctx.GetUint("id")
-
-	// 使用服务层生成新的推荐码
-	result, err := c.referralService.GenerateNewCode(userId)
-	if err != nil {
-		common.SysError("[referral]生成推荐码失败")
-		ResponseError(ctx, "生成推荐码失败")
-		return
-	}
-
-	ResponseOKWithMessage(ctx, "推荐码已重新生成", result)
-}
-
-// 使用推荐码请求
-type UseReferralRequest struct {
-	ReferralCode string `json:"referralCode" binding:"required"`
-}
-
-// 使用他人的推荐码
 func (c *ReferralController) UseReferral(ctx *gin.Context) {
-	var req UseReferralRequest
+	var req define.UseReferralRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ResponseErrorWithData(ctx, "参数错误", []gin.H{
-			{
-				"field":   "referralCode",
-				"message": "推荐码不能为空",
-			},
-		})
-		return
+		ResponseError(ctx, "参数错误")
 	}
 
 	// 获取当前用户ID
-	userId := ctx.GetUint("id")
+	userId := ctx.GetInt64("id")
+	username := ctx.GetString("username")
 
-	// 使用服务层处理推荐码
-	result, err := c.referralService.UseReferralCode(userId, req.ReferralCode)
+	result, err := c.referralService.UseReferralCode(userId, username, req.ReferralCode)
 	if err != nil {
 		common.SysError("[referral]使用推荐码失败")
 		ResponseError(ctx, err.Error())
-		return
 	}
 
 	ResponseOKWithMessage(ctx, "推荐码使用成功", result)

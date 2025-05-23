@@ -9,7 +9,7 @@ import (
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
-	Id               int    `json:"id"`
+	Id               int64  `json:"id"`
 	Username         string `json:"username" gorm:"unique;index" validate:"max=12"`
 	Password         string `json:"password" gorm:"not null;" validate:"min=8,max=20"`
 	DisplayName      string `json:"display_name" gorm:"index" validate:"max=20"`
@@ -22,7 +22,7 @@ type User struct {
 	VerificationCode string `json:"verification_code" gorm:"-:all"` // this field is only for Email verification, don't save it to database!
 }
 
-func GetMaxUserId() int {
+func GetMaxUserId() int64 {
 	var user User
 	DB.Last(&user)
 	return user.Id
@@ -38,7 +38,7 @@ func SearchUsers(keyword string) (users []*User, err error) {
 	return users, err
 }
 
-func GetUserById(id int, selectAll bool) (*User, error) {
+func GetUserById(id int64, selectAll bool) (*User, error) {
 	if id == 0 {
 		return nil, errors.New("id 为空！")
 	}
@@ -52,7 +52,7 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 	return &user, err
 }
 
-func DeleteUserById(id int) (err error) {
+func DeleteUserById(id int64) (err error) {
 	if id == 0 {
 		return errors.New("id 为空！")
 	}

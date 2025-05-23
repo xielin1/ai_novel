@@ -19,7 +19,7 @@ func NewPackageRepository(db *gorm.DB) *PackageRepository {
 }
 
 // GetPackageByID retrieves a package by its ID.
-func (r *PackageRepository) GetPackageByID(id uint) (*model.Package, error) {
+func (r *PackageRepository) GetPackageByID(id int64) (*model.Package, error) {
 	var pkg model.Package
 	if err := r.db.First(&pkg, id).Error; err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (r *PackageRepository) GetAllPackages() ([]model.Package, error) {
 // GetUserCurrentSubscription retrieves the current active subscription for a user.
 // If no active subscription, it does not return the free package's virtual subscription here.
 // The service layer will handle the logic of returning a free package if no active subscription.
-func (r *PackageRepository) GetUserCurrentSubscription(userID uint) (*model.Subscription, error) {
+func (r *PackageRepository) GetUserCurrentSubscription(userID int64) (*model.Subscription, error) {
 	var subscription model.Subscription
 	err := r.db.Where("user_id = ? AND status = ? AND expiry_date > ?", userID, "active", time.Now()).
 		Order("expiry_date DESC").
@@ -60,7 +60,7 @@ func (r *PackageRepository) GetPackageBySubscription(subscription *model.Subscri
 }
 
 // CreateSubscription creates a new subscription record in the database.
-func (r *PackageRepository) CreateSubscription(userID uint, packageID uint, autoRenew bool, startDate time.Time, expiryDate time.Time, nextRenewalDate time.Time, status string) (*model.Subscription, error) {
+func (r *PackageRepository) CreateSubscription(userID int64, packageID int64, autoRenew bool, startDate time.Time, expiryDate time.Time, nextRenewalDate time.Time, status string) (*model.Subscription, error) {
 	subscription := &model.Subscription{
 		UserId:      userID,
 		PackageId:   packageID,
@@ -82,7 +82,7 @@ func (r *PackageRepository) UpdateSubscription(subscription *model.Subscription)
 }
 
 // CreateTokenDistribution records a token distribution event.
-func (r *PackageRepository) CreateTokenDistribution(userID uint, subscriptionID uint, packageID uint, amount int, distributedAt time.Time) (*model.TokenDistribution, error) {
+func (r *PackageRepository) CreateTokenDistribution(userID int64, subscriptionID int64, packageID int64, amount int, distributedAt time.Time) (*model.TokenDistribution, error) {
 	distribution := &model.TokenDistribution{
 		UserId:         userID,
 		SubscriptionId: subscriptionID,

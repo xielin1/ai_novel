@@ -88,7 +88,7 @@ func (c *OutlineController) AIGenerate(ctx *gin.Context) {
 	}
 
 	result, err := c.service.GenerateOutlineWithAI( // 使用注入的服务实例
-		uint(project.UserId),
+		project.UserId,
 		projectId,
 		aiReq.Content,
 		aiReq.Style,

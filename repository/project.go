@@ -16,7 +16,7 @@ func NewProjectRepository(db *gorm.DB) *ProjectRepository {
 }
 
 // GetUserProjects 获取用户项目列表
-func (r *ProjectRepository) GetUserProjects(userId, offset, limit int) ([]*model.Project, int64, error) {
+func (r *ProjectRepository) GetUserProjects(userId int64, offset, limit int) ([]*model.Project, int64, error) {
 	var projects []*model.Project
 	var total int64
 	if err := r.db.Model(&model.Project{}).Where("user_id = ?", userId).Count(&total).Error; err != nil {

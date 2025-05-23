@@ -96,9 +96,8 @@ func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateToken)
 				//selfRoute.GET("/package", controllers.UserController.GetUserPackage)                               // 获取当前用户的套餐信息
-				selfRoute.GET("/referral-code", controllers.ReferralController.GetReferralCode)                // 获取个人推荐码
-				selfRoute.GET("/referrals", controllers.ReferralController.GetReferrals)                       // 获取推荐记录
-				selfRoute.POST("/generate-referral-code", controllers.ReferralController.GenerateReferralCode) // 生成新的推荐码
+				selfRoute.GET("/referral-code", controllers.ReferralController.GetReferralCode) // 获取个人推荐码
+				selfRoute.GET("/referrals", controllers.ReferralController.GetReferrals)        // 获取推荐记录
 			}
 
 			adminRoute := userRoute.Group("/")

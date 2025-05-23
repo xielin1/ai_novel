@@ -20,7 +20,7 @@ func NewTokenReconciliationRepository(db *gorm.DB) *TokenReconciliationRepositor
 }
 
 // SaveReconciliationRecord 保存对账记录
-func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID uint, currentBalance, calculatedBalance int64, description string) (*model.TokenReconciliationRecord, error) {
+func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID int64, currentBalance, calculatedBalance int64, description string) (*model.TokenReconciliationRecord, error) {
 	record := &model.TokenReconciliationRecord{
 		UserID:            userID,
 		CurrentBalance:    currentBalance,
@@ -38,7 +38,7 @@ func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID uint, cu
 }
 
 // UpdateReconciliationRecordAsFixed 更新对账记录为已修复
-func (r *TokenReconciliationRepository) UpdateReconciliationRecordAsFixed(recordID uint) error {
+func (r *TokenReconciliationRepository) UpdateReconciliationRecordAsFixed(recordID int64) error {
 	now := time.Now()
 	return r.DB.Model(&model.TokenReconciliationRecord{}).
 		Where("id = ?", recordID).
@@ -65,7 +65,7 @@ func (r *TokenReconciliationRepository) GetRecentReconciliationRecords(limit int
 }
 
 // GetUserReconciliationRecords 获取用户的对账记录
-func (r *TokenReconciliationRepository) GetUserReconciliationRecords(userID uint, limit int) ([]model.TokenReconciliationRecord, error) {
+func (r *TokenReconciliationRepository) GetUserReconciliationRecords(userID int64, limit int) ([]model.TokenReconciliationRecord, error) {
 	var records []model.TokenReconciliationRecord
 
 	if limit <= 0 {

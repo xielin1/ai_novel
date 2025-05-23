@@ -162,23 +162,14 @@ const Dashboard = () => {
     );
   }) : [];
 
-  // 格式化日期显示
-  const formatDate = dateString => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return '今天';
-    } else if (diffDays === 1) {
-      return '昨天';
-    } else if (diffDays < 7) {
-      return `${diffDays}天前`;
-    } else {
-      return date.toLocaleDateString();
-    }
+  const formatDate = timestamp => {
+    const date = new Date(timestamp * 1000);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
-
+  
   return (
     <Container style={{ padding: '2em' }}>
       <Segment raised style={{ borderRadius: '12px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>

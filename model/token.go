@@ -6,9 +6,9 @@ import (
 
 // UserToken 代表用户Token余额表
 type UserToken struct {
-	UserID    uint  `gorm:"primaryKey"`
+	UserID    int64 `gorm:"primaryKey"`
 	Balance   int64 `gorm:"default:0"`
-	Version   uint  `gorm:"default:1"` // 乐观锁版本号
+	Version   int64 `gorm:"default:1"` // 乐观锁版本号
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -20,9 +20,9 @@ func (UserToken) TableName() string {
 
 // TokenTransaction 代表Token交易流水表
 type TokenTransaction struct {
-	ID                uint   `gorm:"primaryKey;autoIncrement"`
+	ID                int64  `gorm:"primaryKey;autoIncrement"`
 	TransactionUUID   string `gorm:"type:varchar(36);uniqueIndex;not null"` // 用于幂等性检查
-	UserID            uint   `gorm:"index;not null"`
+	UserID            int64  `gorm:"index;not null"`
 	Amount            int64  // 正数为增加，负数为减少
 	BalanceBefore     int64
 	BalanceAfter      int64

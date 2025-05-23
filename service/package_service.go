@@ -83,7 +83,7 @@ func (s *PackageService) GetAllPackages() (define.PackageResponse, error) {
 }
 
 // ValidatePackageID checks if a package ID is valid.
-func (s *PackageService) ValidatePackageID(packageID uint) (bool, error) {
+func (s *PackageService) ValidatePackageID(packageID int64) (bool, error) {
 	if packageID == model.FreePackage.Id {
 		return true, nil
 	}
@@ -109,7 +109,7 @@ func ValidatePaymentMethod(method string) bool {
 }
 
 // CreateSubscription handles the business logic for creating a new package subscription.
-func (s *PackageService) CreateSubscription(userID uint, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
+func (s *PackageService) CreateSubscription(userID int64, req define.CreateSubscriptionRequest) (define.SubscriptionResponse, error) {
 	validPkg, err := s.ValidatePackageID(req.PackageID)
 	if err != nil {
 		return define.SubscriptionResponse{}, fmt.Errorf("error during package ID validation: %w", err)
@@ -192,7 +192,7 @@ func (s *PackageService) CreateSubscription(userID uint, req define.CreateSubscr
 }
 
 // GetUserCurrentPackageInfo retrieves the user's current package and subscription details.
-func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentPackageResponse, error) {
+func (s *PackageService) GetUserCurrentPackageInfo(userID int64) (define.CurrentPackageResponse, error) {
 	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
 	var pkg *model.Package
 
@@ -269,7 +269,7 @@ func (s *PackageService) GetUserCurrentPackageInfo(userID uint) (define.CurrentP
 }
 
 // CancelSubscriptionRenewal cancels the auto-renewal for a user's active subscription.
-func (s *PackageService) CancelSubscriptionRenewal(userID uint) (define.CancelRenewalResponse, error) {
+func (s *PackageService) CancelSubscriptionRenewal(userID int64) (define.CancelRenewalResponse, error) {
 	subscription, err := s.packageRepo.GetUserCurrentSubscription(userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

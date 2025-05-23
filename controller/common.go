@@ -62,7 +62,7 @@ func ResponseErrorWithData(c *gin.Context, message string, data interface{}) {
 
 // ValidateProjectOwnership 验证项目所有权
 // 返回项目ID、项目信息和错误（如有）
-func ValidateProjectOwnership(c *gin.Context) (int, *model.Project, error) {
+func ValidateProjectOwnership(c *gin.Context) (int64, *model.Project, error) {
 	// 解析项目ID
 	_, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -71,7 +71,7 @@ func ValidateProjectOwnership(c *gin.Context) (int, *model.Project, error) {
 	}
 
 	// 获取当前用户ID
-	userId := c.GetInt("id")
+	userId := c.GetInt64("id")
 
 	return userId, nil, nil
 }

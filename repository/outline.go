@@ -18,7 +18,7 @@ func NewOutlineRepository(db *gorm.DB) *OutlineRepository {
 }
 
 // GetOutlineByProjectId 根据项目ID获取大纲
-func (r *OutlineRepository) GetOutlineByProjectId(projectId int) (*model.Outline, error) {
+func (r *OutlineRepository) GetOutlineByProjectId(projectId int64) (*model.Outline, error) {
 	var outline model.Outline
 	err := r.DB.Where("project_id = ?", projectId).First(&outline).Error
 	if err != nil {
@@ -31,7 +31,7 @@ func (r *OutlineRepository) GetOutlineByProjectId(projectId int) (*model.Outline
 }
 
 // SaveOutline 保存大纲内容并创建新版本
-func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGenerated bool, aiStyle string, wordLimit int, tokensUsed int) (*model.Outline, error) {
+func (r *OutlineRepository) SaveOutline(projectId int64, content string, isAiGenerated bool, aiStyle string, wordLimit int, tokensUsed int) (*model.Outline, error) {
 
 	// 查找是否存在大纲
 	var outline model.Outline
@@ -81,7 +81,7 @@ func (r *OutlineRepository) SaveOutline(projectId int, content string, isAiGener
 }
 
 // GetVersionHistory 获取版本历史
-func (r *OutlineRepository) GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
+func (r *OutlineRepository) GetVersionHistory(projectId int64, limit int) ([]*model.Version, error) {
 	var outline model.Outline
 	var versions []*model.Version
 

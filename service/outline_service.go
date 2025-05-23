@@ -70,7 +70,7 @@ func (s *OutlineService) ValidateOutlineFile(filename string) (string, bool) {
 }
 
 // GetOutlineByProjectId 获取项目大纲
-func (s *OutlineService) GetOutlineByProjectId(projectId int) (interface{}, error) {
+func (s *OutlineService) GetOutlineByProjectId(projectId int64) (interface{}, error) {
 	outline, err := s.outlineRepo.GetOutlineByProjectId(projectId)
 	if err != nil {
 		// 如果是新项目，可能没有大纲
@@ -91,7 +91,7 @@ func (s *OutlineService) GetOutlineByProjectId(projectId int) (interface{}, erro
 }
 
 // SaveOutlineContent 保存大纲内容
-func (s *OutlineService) SaveOutlineContent(projectId int, content string) (*model.Outline, error) {
+func (s *OutlineService) SaveOutlineContent(projectId int64, content string) (*model.Outline, error) {
 	// 保存大纲内容，创建新版本，非AI生成
 	logInfo("保存项目 %d 的大纲内容", projectId)
 	outline, err := s.outlineRepo.SaveOutline(projectId, content, false, "", 0, 0)
@@ -112,7 +112,7 @@ func (s *OutlineService) SaveOutlineContent(projectId int, content string) (*mod
 }
 
 // GetVersionHistory 获取版本历史
-func (s *OutlineService) GetVersionHistory(projectId int, limit int) ([]*model.Version, error) {
+func (s *OutlineService) GetVersionHistory(projectId int64, limit int) ([]*model.Version, error) {
 	if limit <= 0 {
 		limit = 10
 		logInfo("版本历史查询限制设置为默认值: %d", limit)
@@ -130,7 +130,7 @@ func (s *OutlineService) GetVersionHistory(projectId int, limit int) ([]*model.V
 }
 
 // GenerateOutlineWithAI 使用AI生成大纲内容
-func (s *OutlineService) GenerateOutlineWithAI(userId uint, projectId int, content string, style string, wordLimit int) (map[string]interface{}, error) {
+func (s *OutlineService) GenerateOutlineWithAI(userId int64, projectId int64, content string, style string, wordLimit int) (map[string]interface{}, error) {
 	logInfo("开始为项目 %d 使用AI生成大纲内容", projectId)
 
 	// 构造AI请求
@@ -186,7 +186,6 @@ func (s *OutlineService) GenerateOutlineWithAI(userId uint, projectId int, conte
 
 	// 扣除用户Token
 	description := fmt.Sprintf("项目[%d]大纲AI续写消耗", projectId)
-	projectIdStr := strconv.Itoa(projectId)
 
 	// 使用TokenService扣减用户Token
 	service := GetTokenService()
@@ -197,7 +196,7 @@ func (s *OutlineService) GenerateOutlineWithAI(userId uint, projectId int, conte
 		"ai_generation_debit",
 		description,
 		"project",
-		projectIdStr,
+		string(projectId),
 	)
 
 	if err != nil {
@@ -224,7 +223,7 @@ func (s *OutlineService) GenerateOutlineWithAI(userId uint, projectId int, conte
 }
 
 // ExportOutlineToFile 导出大纲到文件
-func (s *OutlineService) ExportOutlineToFile(projectId int, format string) (map[string]interface{}, error) {
+func (s *OutlineService) ExportOutlineToFile(projectId int64, format string) (map[string]interface{}, error) {
 	logInfo("开始导出项目 %d 的大纲到文件，格式: %s", projectId, format)
 
 	// 检查格式

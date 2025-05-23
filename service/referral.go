@@ -5,17 +5,16 @@ import (
 	"gin-template/common"
 	"gin-template/define"
 	"gin-template/repository"
-	"strconv"
-
 	"github.com/google/uuid"
+	"github.com/lithammer/shortuuid/v4"
+	"strconv"
 )
 
 type ReferralService struct {
-	referralRepo *repository.ReferralRepository // 注入推荐码仓库
-	tokenService *TokenService                  // 注入Token服务
+	referralRepo *repository.ReferralRepository
+	tokenService *TokenService
 }
 
-// NewReferralService 创建推荐码服务实例
 func NewReferralService(referralRepo *repository.ReferralRepository, tokenService *TokenService) *ReferralService {
 	return &ReferralService{
 		referralRepo: referralRepo,
@@ -24,43 +23,42 @@ func NewReferralService(referralRepo *repository.ReferralRepository, tokenServic
 }
 
 // GetReferralCode 获取用户推荐码信息
-func (s *ReferralService) GetReferralCode(userId uint) (define.ReferralCodeResponse, error) {
-	// 获取用户的推荐码（通过仓库）
-	referral, err := s.referralRepo.GetReferralByUserId(userId)
+func (s *ReferralService) GetReferralCode(userId int64) (define.ReferralCodeResponse, error) {
+	resp := define.ReferralCodeResponse{}
+	// 获取用户的推荐码
+	referral, err := s.referralRepo.GetReferralCodeByUserId(userId)
 	if err != nil {
-		return define.ReferralCodeResponse{}, err
+		common.SysError(fmt.Sprintf("get referral code err,%v", err))
+		return resp, err
 	}
 
 	// 如果推荐码不存在，生成新的
-	if referral == nil {
+	if referral == "" {
 		common.SysLog("[referral] code not exist, generating new referral code")
-		newReferral, err := s.referralRepo.GenerateNewReferralCode(userId)
+		newReferralCodeResp, err := s.GenerateNewCode(userId)
 		if err != nil {
-			return define.ReferralCodeResponse{}, err
+			common.SysError(fmt.Sprintf("generating new referral code,%v", err))
+			return resp, err
 		}
-		referral = newReferral
+		resp.ReferralCode = newReferralCodeResp.NewCode
+		resp.ShareURL = newReferralCodeResp.ShareURL
 	}
+	resp.ReferralCode = referral
+	//todo 生成推荐链接
 
-	// 获取推荐统计信息（通过仓库）
+	// 获取推荐统计信息
 	totalReferred, totalTokens, err := s.referralRepo.GetReferralStat(userId)
 	if err != nil {
 		return define.ReferralCodeResponse{}, err
 	}
-
-	// 构造分享URL
-	shareURL := fmt.Sprintf("https://example.com/register?ref=%s", referral.Code)
-
-	return define.ReferralCodeResponse{
-		ReferralCode:      referral.Code,
-		TotalReferred:     totalReferred,
-		TotalTokensEarned: totalTokens,
-		ShareURL:          shareURL,
-	}, nil
+	resp.TotalReferred = totalReferred
+	resp.TotalTokensEarned = totalTokens
+	return resp, nil
 }
 
 // GetReferrals 获取用户的推荐记录
-func (s *ReferralService) GetReferrals(userId uint, page, limit int) (define.ReferralsListResponse, error) {
-	// 获取推荐记录（通过仓库）
+func (s *ReferralService) GetReferrals(userId int64, page, limit int) (define.ReferralsListResponse, error) {
+	// 获取推荐记录
 	referralUses, totalCount, err := s.referralRepo.GetReferrals(userId, page, limit)
 	if err != nil {
 		return define.ReferralsListResponse{}, err
@@ -70,19 +68,15 @@ func (s *ReferralService) GetReferrals(userId uint, page, limit int) (define.Ref
 	referralDetails := make([]define.ReferralDetail, 0, len(referralUses))
 	for _, use := range referralUses {
 		detail := define.ReferralDetail{
-			ID:           uint(use["id"].(float64)), // 处理类型转换（假设仓库返回float64）
-			ReferrerID:   uint(use["referrer_id"].(float64)),
-			ReferredID:   uint(use["user_id"].(float64)), // 假设user_id是被推荐人ID
+			ID:           (use["id"].(int64)),
 			ReferredName: use["username"].(string),
-			Code:         use["referral_code"].(string), // 假设仓库返回推荐码
-			CreatedAt:    use["used_at"].(string),       // 假设使用时间字段名
+			CreatedAt:    use["used_at"].(string),
 			TokensEarned: int(use["tokens_rewarded"].(float64)),
-			Status:       "active", // 假设默认状态
 		}
 		referralDetails = append(referralDetails, detail)
 	}
 
-	// 获取统计信息（通过仓库）
+	// 获取统计信息
 	totalReferred, totalTokens, err := s.referralRepo.GetReferralStat(userId)
 	if err != nil {
 		return define.ReferralsListResponse{}, err
@@ -104,34 +98,28 @@ func (s *ReferralService) GetReferrals(userId uint, page, limit int) (define.Ref
 }
 
 // GenerateNewCode 为用户生成新的推荐码
-func (s *ReferralService) GenerateNewCode(userId uint) (define.NewReferralCodeResponse, error) {
-	// 生成新推荐码（通过仓库）
-	newReferral, err := s.referralRepo.GenerateNewReferralCode(userId)
-	if err != nil {
-		return define.NewReferralCodeResponse{}, err
-	}
-
+func (s *ReferralService) GenerateNewCode(userId int64) (define.NewReferralCodeResponse, error) {
+	resp := define.NewReferralCodeResponse{}
 	// 获取旧推荐码（如果存在）
-	oldReferral, _ := s.referralRepo.GetReferralByUserId(userId)
-	var previousCode string
-	if oldReferral != nil {
-		previousCode = oldReferral.Code
+	oldReferral, _ := s.referralRepo.GetReferralCodeByUserId(userId)
+	if oldReferral != "" {
+		resp.NewCode = oldReferral
+	} else {
+		// 生成新推荐码
+		code := s.generateRandomCode(8)
+		resp.NewCode = code
+		s.referralRepo.GenerateNewReferralCode(userId, code)
 	}
+	// 构造分享URL,TODO优化分享链接
+	resp.ShareURL = fmt.Sprintf("https://example.com/register?ref=%s", resp.NewCode)
 
-	// 构造分享URL
-	shareURL := fmt.Sprintf("https://example.com/register?ref=%s", newReferral.Code)
-
-	return define.NewReferralCodeResponse{
-		PreviousCode: previousCode,
-		NewCode:      newReferral.Code,
-		ShareURL:     shareURL,
-	}, nil
+	return resp, nil
 }
 
 // UseReferralCode 使用他人的推荐码
-func (s *ReferralService) UseReferralCode(userId uint, code string) (define.UseReferralCodeResponse, error) {
-	// 使用推荐码（通过仓库，返回奖励的Token数量）
-	tokensRewarded, err := s.referralRepo.UseReferralCode(userId, code)
+func (s *ReferralService) UseReferralCode(userId int64, username, code string) (define.UseReferralCodeResponse, error) {
+	// 使用推荐码
+	tokensRewarded, err := s.referralRepo.UseReferralCode(userId, username, code, 200)
 	if err != nil {
 		return define.UseReferralCodeResponse{}, err
 	}
@@ -157,4 +145,10 @@ func (s *ReferralService) UseReferralCode(userId uint, code string) (define.UseR
 		TokensRewarded: int64(tokensRewarded),
 		NewBalance:     userToken.Balance,
 	}, nil
+}
+
+// generateRandomCode 生成随机推荐码
+func (s *ReferralService) generateRandomCode(length int) string {
+	sid := shortuuid.New()[:length]
+	return sid
 }

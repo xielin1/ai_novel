@@ -59,7 +59,7 @@ func (pc *PackageController) SubscribePackage(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetUint("id") // Assuming user ID is set in context by auth middleware
+	userID := c.GetInt64("id") // Assuming user ID is set in context by auth middleware
 	if userID == 0 {
 		ResponseError(c, "用户未登录或无法获取用户信息")
 		return
@@ -91,7 +91,7 @@ func (pc *PackageController) SubscribePackage(c *gin.Context) {
 // @Failure 500 {object} Response
 // @Router /packages/current [get]
 func (pc *PackageController) GetUserPackage(c *gin.Context) {
-	userID := c.GetUint("id")
+	userID := c.GetInt64("id")
 	if userID == 0 {
 		ResponseError(c, "用户未登录或无法获取用户信息")
 		return
@@ -119,7 +119,7 @@ func (pc *PackageController) GetUserPackage(c *gin.Context) {
 // @Failure 500 {object} Response
 // @Router /packages/cancel-renewal [post]
 func (pc *PackageController) CancelRenewal(c *gin.Context) {
-	userID := c.GetUint("id")
+	userID := c.GetInt64("id")
 	if userID == 0 {
 		ResponseError(c, "用户未登录或无法获取用户信息")
 		return
