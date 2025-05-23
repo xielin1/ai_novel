@@ -8,9 +8,12 @@ import (
 	"gin-template/repository"
 	"gin-template/router"
 	"gin-template/service"
+	task2 "gin-template/service/task"
+	"gin-template/task"
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -71,6 +74,15 @@ func main() {
 		server.Use(sessions.Sessions("session", store))
 	}
 
+	//  Initialize 	DBCompensation
+	compensation, err2 := task.NewDBCompensation(model.DB)
+	// 创建调度器（每30秒执行一次）todo 优化成配置,增加开关配置
+	if err2 != nil {
+		common.FatalLog(err)
+	}
+	scheduler := task.NewDBScheduler(compensation, 30*time.Second)
+	InitTask(scheduler)
+
 	router.SetRouter(server, buildFS, indexPage, controllers)
 	var port = os.Getenv("PORT")
 	if port == "" {
@@ -82,6 +94,10 @@ func main() {
 	}
 }
 
+// InitTask 注册task
+func InitTask(scheduler *task.DBScheduler) {
+	scheduler.RegisterHandler("UserTokenCompensationTask", task2.CompensationUserTokensInit)
+}
 func InitTokenService() {
 	tokenService := service.NewTokenService(repository.NewTokenRepository(model.DB))
 	service.SetTokenService(tokenService)

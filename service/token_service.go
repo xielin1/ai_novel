@@ -5,6 +5,9 @@ import (
 	"gin-template/common"
 	"gin-template/model"
 	"gin-template/repository"
+	"gin-template/task"
+	"github.com/google/uuid"
+	"time"
 )
 
 type TokenService struct {
@@ -40,6 +43,38 @@ func (s *TokenService) InitUserTokenAccount(userID int64, initialBalance int64) 
 	}
 	common.SysLog(tokenServiceLogPrefix + fmt.Sprintf("Token account initialized successfully for user %d, balance: %d", userID, userToken.Balance))
 	return userToken, nil
+}
+
+// InitUserTokenWithCompensation 带补偿机制的初始化方法
+func (s *TokenService) InitUserTokenWithCompensation(userID int64, initialBalance int64) error {
+	// 先尝试直接执行
+	_, err := s.InitUserTokenAccount(userID, initialBalance)
+	if err == nil {
+		common.SysLog(tokenServiceLogPrefix + fmt.Sprintf("Token account initialized successfully for user %d, balance: %d", userID, initialBalance))
+		return nil
+	}
+
+	// 如果失败则创建补偿任务
+	compTask := model.CompensationTask{
+		TaskID:      uuid.New().String(),
+		TaskType:    task.UserTokenInitCompensationTask,
+		Payload:     fmt.Sprintf(`{"user_id":%d,"amount":%d}`, userID, initialBalance),
+		MaxRetries:  5,
+		NextExecute: time.Now().Add(10 * time.Second),
+	}
+
+	compTable, err1 := task.NewDBCompensation(model.DB)
+	if err1 != nil {
+		common.SysError("初始化任务补偿器失败")
+	}
+
+	if err := compTable.AddTask(compTask); err != nil {
+		// 如果补偿任务也创建失败，记录告警
+		common.SysError(fmt.Sprintf("严重错误：补偿任务创建失败！userID:%d error:%v", userID, err))
+		return fmt.Errorf("系统繁忙，请稍后检查")
+	}
+
+	return nil
 }
 
 // GetBalance retrieves the current token balance of a user

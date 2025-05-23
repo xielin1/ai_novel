@@ -5,12 +5,11 @@ import (
 	"gin-template/common"
 	"gin-template/model"
 	"gin-template/service"
-	"strconv"
-	"strings"
-
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"strconv"
+	"strings"
 )
 
 type LoginRequest struct {
@@ -121,8 +120,8 @@ func Register(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
-	//todo 优化成系统配置项，且优化成异步kafka，添加重试机制，或者放在一个事务里面
-	service.GetTokenService().InitUserTokenAccount(cleanUser.Id, 5000)
+	//todo 优化成系统配置项，且优化成异步kafka，考虑放在一个事务里面
+	service.GetTokenService().InitUserTokenWithCompensation(cleanUser.Id, 5000)
 
 	ResponseOK(c, nil)
 }
@@ -334,8 +333,8 @@ func CreateUser(c *gin.Context) {
 		ResponseError(c, err.Error())
 		return
 	}
-	//todo 优化成系统配置项，且优化成异步kafka，添加重试机制，或者放在一个事务里面
-	service.GetTokenService().InitUserTokenAccount(cleanUser.Id, 5000)
+	//todo 优化成系统配置项，且优化成异步kafka，或者放在一个事务里面
+	service.GetTokenService().InitUserTokenWithCompensation(cleanUser.Id, 5000)
 
 	ResponseOK(c, nil)
 }

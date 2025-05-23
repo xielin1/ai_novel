@@ -129,7 +129,7 @@ func (s *ReferralService) UseReferralCode(userId int64, username, code string) (
 	// 生成交易ID
 	transactionUUID := uuid.New().String()
 
-	// 为被推荐人增加Token（通过TokenService）
+	// Todo 优化成异步重试，为被推荐人增加Token
 	userToken, err := s.tokenService.CreditToken(
 		userId,
 		int64(tokensRewarded),
