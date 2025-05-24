@@ -96,8 +96,11 @@ func main() {
 
 // InitTask 注册task
 func InitTask(scheduler *task.DBScheduler) {
-	scheduler.RegisterHandler("UserTokenCompensationTask", task2.CompensationUserTokensInit)
+	scheduler.RegisterHandler(task.UserTokenInitCompensationTask, task2.CompensationUserTokensInit)
+	scheduler.RegisterHandler(task.TokenCreditCompensationTask, task2.CompensationTokenCredit)
+	scheduler.RegisterHandler(task.TokenDebitCompensationTask, task2.CompensationTokenDebit)
 }
+
 func InitTokenService() {
 	tokenService := service.NewTokenService(repository.NewTokenRepository(model.DB))
 	service.SetTokenService(tokenService)

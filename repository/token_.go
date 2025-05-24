@@ -10,12 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// TokenRepository 提供Token相关的数据库操作
 type TokenRepository struct {
 	DB *gorm.DB
 }
 
-// NewTokenRepository 创建一个新的TokenRepository实例
 func NewTokenRepository(db *gorm.DB) *TokenRepository {
 	return &TokenRepository{
 		DB: db,

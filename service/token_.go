@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"gin-template/common"
 	"gin-template/model"
@@ -138,6 +139,92 @@ func (s *TokenService) DebitToken(userID int64, amount int64, transactionUUID st
 
 	common.SysLog(tokenServiceLogPrefix + fmt.Sprintf("Tokens debited successfully from user %d, new balance: %d", userID, userToken.Balance))
 	return userToken, nil
+}
+
+func (s *TokenService) CreditTokenWithCompensation(userID int64, amount int64, transactionUUID string,
+	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
+
+	// 先尝试直接执行
+	userToken, err := s.CreditToken(userID, amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
+	if err == nil {
+		return userToken, nil
+	}
+
+	// 如果失败则创建补偿任务
+	payload := map[string]interface{}{
+		"user_id":             userID,
+		"amount":              amount,
+		"transaction_uuid":    transactionUUID,
+		"transaction_type":    transactionType,
+		"description":         description,
+		"related_entity_type": relatedEntityType,
+		"related_entity_id":   relatedEntityID,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	compTask := model.CompensationTask{
+		TaskID:      uuid.New().String(),
+		TaskType:    task.TokenCreditCompensationTask,
+		Payload:     string(payloadBytes),
+		MaxRetries:  5,
+		NextExecute: time.Now().Add(10 * time.Second),
+	}
+
+	compTable, err1 := task.NewDBCompensation(model.DB)
+	if err1 != nil {
+		common.SysError("初始化任务补偿器失败")
+		return nil, fmt.Errorf("系统繁忙，请稍后重试")
+	}
+
+	if err := compTable.AddTask(compTask); err != nil {
+		common.SysError(fmt.Sprintf("严重错误：补偿任务创建失败！userID:%d error:%v", userID, err))
+		return nil, fmt.Errorf("系统繁忙，请稍后检查")
+	}
+
+	return nil, fmt.Errorf("操作已进入补偿流程，请稍后查询结果")
+}
+
+func (s *TokenService) DebitTokenWithCompensation(userID int64, amount int64, transactionUUID string,
+	transactionType string, description string, relatedEntityType string, relatedEntityID string) (*model.UserToken, error) {
+
+	// 先尝试直接执行
+	userToken, err := s.DebitToken(userID, amount, transactionUUID, transactionType, description, relatedEntityType, relatedEntityID)
+	if err == nil {
+		return userToken, nil
+	}
+
+	// 如果失败则创建补偿任务
+	payload := map[string]interface{}{
+		"user_id":             userID,
+		"amount":              amount,
+		"transaction_uuid":    transactionUUID,
+		"transaction_type":    transactionType,
+		"description":         description,
+		"related_entity_type": relatedEntityType,
+		"related_entity_id":   relatedEntityID,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	compTask := model.CompensationTask{
+		TaskID:      uuid.New().String(),
+		TaskType:    task.TokenDebitCompensationTask,
+		Payload:     string(payloadBytes),
+		MaxRetries:  5,
+		NextExecute: time.Now().Add(10 * time.Second),
+	}
+
+	compTable, err1 := task.NewDBCompensation(model.DB)
+	if err1 != nil {
+		common.SysError("初始化任务补偿器失败")
+		return nil, fmt.Errorf("系统繁忙，请稍后重试")
+	}
+
+	if err := compTable.AddTask(compTask); err != nil {
+		common.SysError(fmt.Sprintf("严重错误：补偿任务创建失败！userID:%d error:%v", userID, err))
+		return nil, fmt.Errorf("系统繁忙，请稍后检查")
+	}
+
+	return nil, fmt.Errorf("操作已进入补偿流程，请稍后查询结果")
 }
 
 // GetUserTransactions retrieves a user's transaction history

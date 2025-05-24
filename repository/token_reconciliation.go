@@ -7,12 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// TokenReconciliationRepository Token对账记录仓库
 type TokenReconciliationRepository struct {
 	DB *gorm.DB
 }
 
-// NewTokenReconciliationRepository 创建一个新的TokenReconciliationRepository实例
 func NewTokenReconciliationRepository(db *gorm.DB) *TokenReconciliationRepository {
 	return &TokenReconciliationRepository{
 		DB: db,
