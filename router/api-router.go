@@ -130,5 +130,16 @@ func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
 			fileRoute.POST("/", middleware.UploadRateLimit(), controller.UploadFile)
 			fileRoute.DELETE("/:id", controller.DeleteFile)
 		}
+
+		//后续需要启用时再处理
+		//api := router.Group("/api/reconciliation")
+		//{
+		//	api.POST("/start", controller.StartService)
+		//	api.POST("/stop", controller.StopService)
+		//	api.POST("/full", controller.FullReconciliation)
+		//	api.POST("/user", controller.UserReconciliation) // 使用JSON传参方式（可选）
+		//
+		//}
+
 	}
 }

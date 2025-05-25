@@ -25,7 +25,7 @@ func (r *TokenRepository) GetUserToken(userID int64) (*model.UserToken, error) {
 	var userToken model.UserToken
 	err := r.DB.Where("user_id = ?", userID).First(&userToken).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("token account not found for user %d", userID)
 		}
 		return nil, err
@@ -33,15 +33,54 @@ func (r *TokenRepository) GetUserToken(userID int64) (*model.UserToken, error) {
 	return &userToken, nil
 }
 
-// InitUserTokenAccount 初始化用户Token账户
+// InitUserTokenAccount 初始化用户Token账户并创建初始交易记录
 func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int64) (*model.UserToken, error) {
-	userToken := &model.UserToken{
-		UserID:  userID,
-		Balance: initialBalance,
-		Version: 1,
-	}
+	var userToken *model.UserToken
 
-	err := r.DB.FirstOrCreate(userToken, model.UserToken{UserID: userID}).Error
+	err := r.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. 检查用户账户是否已存在
+		var existingUserToken model.UserToken
+		if err := tx.Where("user_id = ?", userID).First(&existingUserToken).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("查询用户Token账户失败: %v", err)
+			}
+			// 账户不存在，创建新账户
+			userToken = &model.UserToken{
+				UserID:  userID,
+				Balance: initialBalance,
+				Version: 1,
+			}
+			if err := tx.Create(userToken).Error; err != nil {
+				return fmt.Errorf("创建用户Token账户失败: %v", err)
+			}
+		} else {
+			// 账户已存在，直接返回
+			userToken = &existingUserToken
+			return nil
+		}
+
+		// 2. 创建初始交易记录,todo 类型写成常量
+		transactionUUID := GenerateTransactionUUID(userID, "initial") // 需要实现这个函数
+		transaction := model.TokenTransaction{
+			TransactionUUID:   transactionUUID,
+			UserID:            userID,
+			Amount:            initialBalance,
+			BalanceBefore:     0,
+			BalanceAfter:      initialBalance,
+			Type:              "initial",
+			RelatedEntityType: "system",
+			RelatedEntityID:   "init",
+			Description:       "Initial token allocation",
+			Status:            "completed",
+		}
+
+		if err := tx.Create(&transaction).Error; err != nil {
+			return fmt.Errorf("创建初始交易记录失败: %v", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +88,17 @@ func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int6
 	return userToken, nil
 }
 
+// GenerateTransactionUUID 生成唯一的交易UUID
+func GenerateTransactionUUID(userID int64, prefix string) string {
+	return fmt.Sprintf("%s-%d-%s", prefix, userID, uuid.New().String())
+}
+
 // GetTransactionByUUID 根据UUID获取交易记录
 func (r *TokenRepository) GetTransactionByUUID(transactionUUID string) (*model.TokenTransaction, error) {
 	var transaction model.TokenTransaction
 	err := r.DB.Where("transaction_uuid = ?", transactionUUID).First(&transaction).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil // 未找到不视为错误，表示新交易
 		}
 		return nil, err
@@ -70,7 +114,7 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 	// 1. 使用悲观锁获取用户Token信息
 	var userToken model.UserToken
 	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("user_id = ?", userID).First(&userToken).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("用户 %d 的Token账户不存在", userID)
 		}
 		return nil, err
@@ -90,7 +134,7 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 		Updates(map[string]interface{}{
 			"balance":    balanceAfter,
 			"version":    userToken.Version + 1,
-			"updated_at": time.Now(),
+			"updated_at": time.Now().Unix(),
 		})
 
 	if result.Error != nil {

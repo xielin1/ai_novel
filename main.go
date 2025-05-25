@@ -102,6 +102,8 @@ func InitTask(scheduler *task.DBScheduler) {
 }
 
 func InitTokenService() {
-	tokenService := service.NewTokenService(repository.NewTokenRepository(model.DB))
+	tokenRepository := repository.NewTokenRepository(model.DB)
+	tokenService := service.NewTokenService(tokenRepository)
 	service.SetTokenService(tokenService)
+	service.InitReconciliationService(tokenRepository, repository.NewTokenReconciliationRepository(model.DB))
 }

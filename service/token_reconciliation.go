@@ -9,22 +9,6 @@ import (
 	"time"
 )
 
-// 日志前缀，方便区分不同服务的日志
-const reconciliationLogPrefix = "[TokenReconciliation] "
-
-// 记录信息日志
-func reconciliationLogInfo(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	common.SysLog(reconciliationLogPrefix + message)
-}
-
-// 记录错误日志
-func reconciliationLogError(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	common.SysError(reconciliationLogPrefix + message)
-}
-
-// TokenReconciliationService Token对账服务
 type TokenReconciliationService struct {
 	running   bool
 	mutex     sync.Mutex
@@ -35,7 +19,6 @@ type TokenReconciliationService struct {
 	reconRepo *repository.TokenReconciliationRepository
 }
 
-// NewTokenReconciliationService 创建新的Token对账服务
 func NewTokenReconciliationService(interval time.Duration, batchSize int, tokenRepo *repository.TokenRepository, reconRepo *repository.TokenReconciliationRepository) *TokenReconciliationService {
 	if interval < time.Minute {
 		interval = time.Hour // 默认每小时对账一次
@@ -70,7 +53,8 @@ func (s *TokenReconciliationService) Start() {
 
 	go s.reconciliationLoop()
 
-	reconciliationLogInfo("Token对账服务已启动，间隔：%v", s.interval)
+	// 直接调用common.SysLog，移除日志前缀
+	common.SysLog(fmt.Sprintf("Token对账服务已启动，间隔：%v", s.interval))
 }
 
 // Stop 停止定期对账服务
@@ -85,7 +69,7 @@ func (s *TokenReconciliationService) Stop() {
 	s.running = false
 	close(s.stopChan)
 
-	reconciliationLogInfo("Token对账服务已停止")
+	common.SysLog("Token对账服务已停止")
 }
 
 // reconciliationLoop 对账循环
@@ -108,17 +92,17 @@ func (s *TokenReconciliationService) reconciliationLoop() {
 
 // performReconciliation 执行一次完整的对账操作
 func (s *TokenReconciliationService) performReconciliation() {
-	reconciliationLogInfo("开始执行Token对账...")
+	common.SysLog("开始执行Token对账...")
 	startTime := time.Now()
 
 	// 1. 获取所有用户ID
 	userIDs, err := s.getAllUserIDs()
 	if err != nil {
-		reconciliationLogError("获取用户列表失败: %v", err)
+		common.SysError(fmt.Sprintf("获取用户列表失败: %v", err))
 		return
 	}
 
-	reconciliationLogInfo("共找到 %d 个用户账户需要对账", len(userIDs))
+	common.SysLog(fmt.Sprintf("共找到 %d 个用户账户需要对账", len(userIDs)))
 
 	// 2. 分批处理用户
 	var wg sync.WaitGroup
@@ -127,8 +111,7 @@ func (s *TokenReconciliationService) performReconciliation() {
 	// 收集不匹配信息的goroutine
 	go func() {
 		for discrepancy := range discrepancies {
-			reconciliationLogError("对账不匹配: %s", discrepancy)
-			// 这里可以添加将不匹配信息写入数据库或发送告警的代码
+			common.SysError(discrepancy) // 直接输出错误日志
 		}
 	}()
 
@@ -152,7 +135,7 @@ func (s *TokenReconciliationService) performReconciliation() {
 	close(discrepancies)
 
 	duration := time.Since(startTime)
-	reconciliationLogInfo("Token对账完成，耗时: %v", duration)
+	common.SysLog(fmt.Sprintf("Token对账完成，耗时: %v", duration))
 }
 
 // getAllUserIDs 获取所有拥有Token账户的用户ID
@@ -168,7 +151,7 @@ func (s *TokenReconciliationService) reconcileUserBatch(userIDs []int64, discrep
 		// 1. 获取用户当前Token余额
 		userToken, err := s.tokenRepo.GetUserToken(userID)
 		if err != nil {
-			reconciliationLogError("获取用户 %d 的Token余额失败: %v", userID, err)
+			common.SysError(fmt.Sprintf("获取用户 %d 的Token余额失败: %v", userID, err))
 			continue
 		}
 
@@ -177,21 +160,17 @@ func (s *TokenReconciliationService) reconcileUserBatch(userIDs []int64, discrep
 		// 2. 计算用户交易记录总和
 		calculatedBalance, err := s.calculateUserBalanceFromTransactions(userID)
 		if err != nil {
-			reconciliationLogError("计算用户 %d 的交易记录总和失败: %v", userID, err)
+			common.SysError(fmt.Sprintf("计算用户 %d 的交易记录总和失败: %v", userID, err))
 			continue
 		}
 
 		// 3. 比较余额
 		if currentBalance != calculatedBalance {
 			// 构造不匹配信息
-			discrepancy := fmt.Sprintf("用户 %d 的余额不匹配: 当前余额=%d, 计算余额=%d, 差额=%d",
+			discrepancy := fmt.Sprintf("对账发现: 用户 %d 的余额不匹配: 当前余额=%d, 计算余额=%d, 差额=%d",
 				userID, currentBalance, calculatedBalance, currentBalance-calculatedBalance)
 
-			// 输出到日志
-			reconciliationLogError("对账发现: %s", discrepancy)
-
-			// 发送到channel，可能用于告警
-			discrepancies <- discrepancy
+			discrepancies <- discrepancy // 发送到错误日志收集channel
 
 			// 保存到数据库
 			description := fmt.Sprintf("系统定期对账发现差异: 当前余额=%d, 基于交易记录计算余额=%d",
@@ -199,19 +178,19 @@ func (s *TokenReconciliationService) reconcileUserBatch(userIDs []int64, discrep
 
 			record, err := s.reconRepo.SaveReconciliationRecord(userID, currentBalance, calculatedBalance, description)
 			if err != nil {
-				reconciliationLogError("保存用户 %d 的对账记录失败: %v", userID, err)
+				common.SysError(fmt.Sprintf("保存用户 %d 的对账记录失败: %v", userID, err))
 			} else {
-				reconciliationLogInfo("已保存用户 %d 的对账记录，ID=%d", userID, record.ID)
+				common.SysLog(fmt.Sprintf("已保存用户 %d 的对账记录，ID=%d", userID, record.ID))
 			}
 
-			// 可选: 自动修复不匹配
-			if autoFix := false; autoFix { // 设为true启用自动修复
+			// 可选: 自动修复不匹配,todo 设置成配置项
+			if autoFix := true; autoFix { // 设为true启用自动修复
 				if s.fixBalanceDiscrepancy(userID, currentBalance, calculatedBalance) {
 					// 如果修复成功，更新对账记录为已修复
 					if record != nil {
 						err := s.reconRepo.UpdateReconciliationRecordAsFixed(record.ID)
 						if err != nil {
-							reconciliationLogError("更新对账记录状态失败: %v", err)
+							common.SysError(fmt.Sprintf("更新对账记录状态失败: %v", err))
 						}
 					}
 				}
@@ -242,7 +221,7 @@ func (s *TokenReconciliationService) calculateUserBalanceFromTransactions(userID
 // fixBalanceDiscrepancy 修复用户余额不匹配
 // 警告: 谨慎启用此功能，最好在确认有问题的情况下手动修复
 func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID int64, currentBalance, calculatedBalance int64) bool {
-	reconciliationLogInfo("开始修复用户 %d 的余额不匹配: 当前=%d, 计算=%d", userID, currentBalance, calculatedBalance)
+	common.SysLog(fmt.Sprintf("开始修复用户 %d 的余额不匹配: 当前=%d, 计算=%d", userID, currentBalance, calculatedBalance))
 
 	// 创建一个调整交易记录
 	diff := calculatedBalance - currentBalance
@@ -257,30 +236,34 @@ func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID int64, current
 	if diff > 0 {
 		_, err := GetTokenService().CreditToken(userID, diff, transactionUUID, transactionType, description, "system", "reconciliation")
 		if err != nil {
-			reconciliationLogError("修复用户 %d 余额失败 (增加): %v", userID, err)
+			common.SysError(fmt.Sprintf("修复用户 %d 余额失败 (增加): %v", userID, err))
 			return false
 		}
 	} else if diff < 0 { // 如果是减少余额
 		_, err := GetTokenService().DebitToken(userID, -diff, transactionUUID, transactionType, description, "system", "reconciliation")
 		if err != nil {
-			reconciliationLogError("修复用户 %d 余额失败 (减少): %v", userID, err)
+			common.SysError(fmt.Sprintf("修复用户 %d 余额失败 (减少): %v", userID, err))
 			return false
 		}
 	}
 
-	reconciliationLogInfo("已修复用户 %d 的余额不匹配", userID)
+	common.SysLog(fmt.Sprintf("已修复用户 %d 的余额不匹配", userID))
 	return true
 }
 
-// 定义一个方便调用的全局对账服务实例
 var tokenReconciliationService *TokenReconciliationService
+
+func GetTokenReconciliation() *TokenReconciliationService {
+	//todo 优化下，单例模式
+	return tokenReconciliationService
+}
 
 // InitReconciliationService 初始化Token对账服务
 func InitReconciliationService(tokenRepo *repository.TokenRepository, reconRepo *repository.TokenReconciliationRepository) {
 	// 确保TokenReconciliationRecord表存在
 	err := reconRepo.EnsureTokenReconciliationTable()
 	if err != nil {
-		reconciliationLogError("迁移TokenReconciliationRecord表失败: %v", err)
+		common.SysError(fmt.Sprintf("迁移TokenReconciliationRecord表失败: %v", err))
 	}
 
 	// 每天凌晨3点执行对账
@@ -290,24 +273,24 @@ func InitReconciliationService(tokenRepo *repository.TokenRepository, reconRepo 
 	tokenReconciliationService = NewTokenReconciliationService(interval, batchSize, tokenRepo, reconRepo)
 	tokenReconciliationService.Start()
 
-	reconciliationLogInfo("Token对账服务初始化完成，设置为每 %v 执行一次，批处理大小: %d", interval, batchSize)
+	common.SysLog(fmt.Sprintf("Token对账服务初始化完成，设置为每 %v 执行一次，批处理大小: %d", interval, batchSize))
 }
 
 // StopReconciliationService 停止Token对账服务
 func StopReconciliationService() {
 	if tokenReconciliationService != nil {
 		tokenReconciliationService.Stop()
-		reconciliationLogInfo("Token对账服务已停止")
+		common.SysLog("Token对账服务已停止")
 	}
 }
 
 // ReconcileAllTokens 手动触发全量对账
 func ReconcileAllTokens() error {
 	if tokenReconciliationService == nil {
-		return fmt.Errorf("Token对账服务尚未初始化")
+		return fmt.Errorf("token对账服务尚未初始化")
 	}
 
-	reconciliationLogInfo("手动触发全量对账")
+	common.SysLog("手动触发全量对账")
 	tokenReconciliationService.performReconciliation()
 	return nil
 }
@@ -315,10 +298,10 @@ func ReconcileAllTokens() error {
 // ReconcileUserToken 对特定用户进行对账
 func ReconcileUserToken(userID int64) error {
 	if tokenReconciliationService == nil {
-		return fmt.Errorf("Token对账服务尚未初始化")
+		return fmt.Errorf("token对账服务尚未初始化")
 	}
 
-	reconciliationLogInfo("对用户 %d 进行手动对账", userID)
+	common.SysLog(fmt.Sprintf("对用户 %d 进行手动对账", userID))
 
 	// 模拟批处理，但只包含一个用户
 	discrepancies := make(chan string, 10)
@@ -336,10 +319,10 @@ func ReconcileUserToken(userID int64) error {
 	close(discrepancies)
 
 	if len(issues) > 0 {
-		reconciliationLogError("用户 %d 对账发现问题: %v", userID, issues)
+		common.SysError(fmt.Sprintf("用户 %d 对账发现问题: %v", userID, issues))
 		return fmt.Errorf("发现对账问题: %v", issues)
 	}
 
-	reconciliationLogInfo("用户 %d 对账完成，未发现问题", userID)
+	common.SysLog(fmt.Sprintf("用户 %d 对账完成，未发现问题", userID))
 	return nil
 }

@@ -37,7 +37,7 @@ func (r *TokenReconciliationRepository) SaveReconciliationRecord(userID int64, c
 
 // UpdateReconciliationRecordAsFixed 更新对账记录为已修复
 func (r *TokenReconciliationRepository) UpdateReconciliationRecordAsFixed(recordID int64) error {
-	now := time.Now()
+	now := time.Now().Unix()
 	return r.DB.Model(&model.TokenReconciliationRecord{}).
 		Where("id = ?", recordID).
 		Updates(map[string]interface{}{

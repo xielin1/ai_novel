@@ -1,6 +1,5 @@
 package model
 
-// TokenReconciliationRecord Token对账记录
 type TokenReconciliationRecord struct {
 	ID                int64 `gorm:"primaryKey;autoIncrement"`
 	UserID            int64 `gorm:"index;not null"`
@@ -13,7 +12,6 @@ type TokenReconciliationRecord struct {
 	CreatedAt         int64
 }
 
-// TableName 指定表名
 func (TokenReconciliationRecord) TableName() string {
 	return "token_reconciliation_records"
 }
