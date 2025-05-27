@@ -23,6 +23,7 @@ func CompensationUserTokensInit(task model.CompensationTask) error {
 	//	return nil // 已经成功则直接返回
 	//}
 
+	//todo 初始化失败，流水记录状态要设置为失败，在恢复的时候，要先检查流水表中失败的，随后对这条记录修复重试
 	_, err := service.GetTokenService().InitUserTokenAccount(params.userId, params.amount)
 	if err != nil {
 		common.SysError(fmt.Sprintf("init user %d token account failed: %v", params.userId, err))

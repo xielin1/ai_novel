@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 整体业务介绍
+业务按照模块可以划分层package，token，project，referral，outline。主要基于字节跳动eino框架搭建ai续写小说的agent。package定义用户套餐，token关注用户续写以后的token扣费情况，project代码用户的小说作品，outline代表作品的大纲，后续还会引入内容续写模块。
+
+# 系统架构
+1. 系统基于gin搭建，遵循controller->service->repository的分层顺序。数据库操作使用gorm。另外层与层之间的数据传递结构体定义在define。
+2. 前端代码在web目录下，使用react搭建，使用semantic-ui-react组件库
+
+# 代码风格
+
+1. 系统处理有关时间的字段时，默认由gorm插件自动处理全部转化成bigint记录时间戳。
+2. 通过gin设置用户信息，使用如下代码，在获取对应用户信息时，使用ctxc.Get("field")
+```go
+c.Set("username", username)
+c.Set("role", role)
+c.Set("id", id)
+c.Set("authByToken", authByToken)
+```
+3. 对于id，在go中统一用int64
+4. 日志输出用。。。
+5. 对于需要考虑补偿的业务，使用task，具体的task定义在task包下。
+6. 在处理数据库查询信息时，遵循最小返回原则，尽量避免返回所有字段。像userid这些，基于业务去判断是否应该返回。
+7. 在处理数据返回信息时，不允许直接操作model，必须在defiene中定义结构体。

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"gin-template/common"
+	"gin-template/define"
 	"gin-template/model"
 	"gin-template/repository"
 	"sync"
@@ -196,6 +197,8 @@ func (s *TokenReconciliationService) reconcileUserBatch(userIDs []int64, discrep
 				}
 			}
 		}
+
+		common.SysLog(fmt.Sprintf("用户 %d 的余额已对账完成", userID))
 	}
 }
 
@@ -228,7 +231,7 @@ func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID int64, current
 
 	// 生成唯一的交易UUID
 	transactionUUID := fmt.Sprintf("recon-%d-%d", userID, time.Now().Unix())
-	transactionType := "reconciliation_adjustment"
+	transactionType := define.TokenTransactionTypeReconciliationAdjustment
 	description := fmt.Sprintf("系统对账调整: %d -> %d", currentBalance, calculatedBalance)
 
 	// 使用TokenService执行调整

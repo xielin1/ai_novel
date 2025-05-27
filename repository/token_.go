@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"gin-template/define"
 	"gin-template/model"
 	"time"
 
@@ -59,7 +60,7 @@ func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int6
 			return nil
 		}
 
-		// 2. 创建初始交易记录,todo 类型写成常量
+		// 2. 创建初始交易记录
 		transactionUUID := GenerateTransactionUUID(userID, "initial") // 需要实现这个函数
 		transaction := model.TokenTransaction{
 			TransactionUUID:   transactionUUID,
@@ -67,11 +68,11 @@ func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int6
 			Amount:            initialBalance,
 			BalanceBefore:     0,
 			BalanceAfter:      initialBalance,
-			Type:              "initial",
+			Type:              define.TokenTransactionTypeInitial,
 			RelatedEntityType: "system",
 			RelatedEntityID:   "init",
 			Description:       "Initial token allocation",
-			Status:            "completed",
+			Status:            define.TransactionStatusCompleted,
 		}
 
 		if err := tx.Create(&transaction).Error; err != nil {
@@ -156,7 +157,7 @@ func (r *TokenRepository) ModifyTokenBalanceWithTransaction(tx *gorm.DB, userID 
 		RelatedEntityType: relatedEntityType,
 		RelatedEntityID:   relatedEntityID,
 		Description:       description,
-		Status:            "completed",
+		Status:            define.TransactionStatusCompleted,
 	}
 
 	if err := tx.Create(&transaction).Error; err != nil {
@@ -193,7 +194,7 @@ func (r *TokenRepository) CreditUserToken(userID int64, amount int64, transactio
 			return err
 		}
 
-		if existingTransaction != nil && existingTransaction.Status == "completed" {
+		if existingTransaction != nil && existingTransaction.Status == define.TransactionStatusCompleted {
 			// 交易已完成，获取当前用户Token状态
 			var userToken model.UserToken
 			if err := tx.Where("user_id = ?", userID).First(&userToken).Error; err != nil {
