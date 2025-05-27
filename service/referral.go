@@ -120,7 +120,8 @@ func (s *ReferralService) GenerateNewCode(userId int64) (define.NewReferralCodeR
 
 // UseReferralCode 使用他人的推荐码
 func (s *ReferralService) UseReferralCode(userId int64, username, code string) (define.UseReferralCodeResponse, error) {
-	// 使用推荐码
+
+	// 使用推荐码 todo,此处需要放在一个事务中
 	tokensRewarded, err := s.referralRepo.UseReferralCode(userId, username, code, 200)
 	if err != nil {
 		return define.UseReferralCodeResponse{}, err
@@ -130,11 +131,11 @@ func (s *ReferralService) UseReferralCode(userId int64, username, code string) (
 	transactionUUID := uuid.New().String()
 
 	// Todo 优化成异步重试，为被推荐人增加Token
-	userToken, err := s.tokenService.CreditToken(
+	userToken, err := s.tokenService.CreditTokenWithCompensation(
 		userId,
 		int64(tokensRewarded),
 		transactionUUID,
-		"referral_credit",
+		define.TokenTransactionTypeReferralCredit,
 		"使用推荐码获得奖励",
 		"referral",
 		strconv.Itoa(int(userId)),

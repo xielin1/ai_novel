@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/lithammer/shortuuid/v4 v4.2.0
+	github.com/sony/sonyflake v1.2.1
 	golang.org/x/crypto v0.38.0
 	gorm.io/driver/mysql v1.4.3
 	gorm.io/driver/sqlite v1.4.3

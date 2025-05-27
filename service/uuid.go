@@ -1,0 +1,61 @@
+package service
+
+import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/sony/sonyflake"
+)
+
+// 业务类型枚举
+const (
+	BusinessPackage        = "package"
+	BusinessReferral       = "referral"
+	BusinessReconciliation = "reconciliation"
+	BusinessAIWriting      = "ai_writing"
+)
+
+type UUIDGenerator interface {
+	Generate(businessType string) string
+}
+
+// 混合生成器（推荐）
+type HybridGenerator struct {
+	sonyFlake *sonyflake.Sonyflake
+	mu        sync.Mutex
+}
+
+func NewHybridGenerator(machineID uint16) *HybridGenerator {
+	st := sonyflake.Settings{
+		MachineID: func() (uint16, error) {
+			return machineID, nil
+		},
+		StartTime: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	return &HybridGenerator{
+		sonyFlake: sonyflake.NewSonyflake(st),
+	}
+}
+
+func (g *HybridGenerator) Generate(businessType string) string {
+	// 组合结构：业务前缀(2位) + 时间戳(32位) + 机器ID(8位) + 序列号(16位)
+	uid, _ := g.sonyFlake.NextID()
+
+	return fmt.Sprintf("%s-%d", businessPrefix(businessType), uid)
+}
+
+func businessPrefix(businessType string) string {
+	switch businessType {
+	case BusinessPackage:
+		return "PK"
+	case BusinessReferral:
+		return "RF"
+	case BusinessReconciliation:
+		return "RC"
+	case BusinessAIWriting:
+		return "AI"
+	default:
+		return "DF"
+	}
+}
