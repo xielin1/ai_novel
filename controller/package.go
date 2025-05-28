@@ -1,9 +1,12 @@
 package controller
 
 import (
+	"errors"
 	"gin-template/common"
 	"gin-template/define"
 	"gin-template/service"
+	"gorm.io/gorm"
+	"strconv"
 
 	"fmt"
 	"net/http"
@@ -141,4 +144,46 @@ func (pc *PackageController) CancelRenewal(c *gin.Context) {
 		return
 	}
 	ResponseOKWithMessage(c, "成功取消自动续费", result)
+}
+
+// GetPackageByID 处理根据ID获取单个套餐的请求
+// @Summary 获取单个套餐详情
+// @Description 根据套餐ID获取详细信息（包括免费套餐）
+// @Tags Package
+// @Accept json
+// @Produce json
+// @Param id path int64 true "套餐ID"
+// @Success 200 {object} Response{data=PackageInfo}
+// @Failure 400 {object} Response "无效的套餐ID（非数字或负数）"
+// @Failure 404 {object} Response "套餐不存在"
+// @Failure 500 {object} Response "内部服务器错误"
+// @Router /packages/{id} [get]
+func (pc *PackageController) GetPackageByID(c *gin.Context) {
+	// 解析路径参数
+	packageID := c.Param("id")
+
+	// 转换为int64
+	id, err := strconv.ParseInt(packageID, 10, 64)
+	if err != nil || id <= 0 {
+		ResponseError(c, "无效的套餐ID（必须为正整数）")
+		return
+	}
+
+	// 调用服务层获取套餐信息
+	pkgInfo, err := pc.packageService.GetPackageByID(id)
+	if err != nil {
+		// 区分不同错误类型返回对应状态码
+		if errors.Is(err, gorm.ErrRecordNotFound) || err.Error() == "invalid package ID" {
+			c.JSON(http.StatusNotFound, Response{
+				Success: false,
+				Message: "套餐不存在",
+			})
+			return
+		}
+		common.SysError(fmt.Sprintf("[PackageController.GetPackageByID] 套餐ID=%d 错误: %v", id, err))
+		ResponseError(c, "获取套餐详情失败")
+		return
+	}
+
+	ResponseOK(c, pkgInfo)
 }

@@ -66,10 +66,10 @@ const UserProfile = () => {
 
   const fetchPackages = async () => {
     try {
-      const res = await API.get('/api/packages');
+      const res = await API.get('/api/package/all');
       const { success, data } = res.data;
       if (success) {
-        setPackages(data);
+        setPackages(data.packages);
       }
     } catch (error) {
       console.error('获取套餐列表失败', error);
@@ -200,7 +200,7 @@ const UserProfile = () => {
 
   const cancelRenewal = async () => {
     try {
-      const res = await API.post('/api/packages/cancel-renewal');
+      const res = await API.post('/api/package/cancel-renewal');
       const { success, message } = res.data;
       if (success) {
         showSuccess('已取消自动续费');
@@ -230,42 +230,11 @@ const UserProfile = () => {
                 {packageInfo && packageInfo.package.id !== 'free' ? '升级套餐' : '选择套餐'}
               </Header>
               <Card.Group>
-                {/* 添加免费版套餐卡片（仅当未显示当前套餐为免费版时显示） */}
-                {packageInfo && packageInfo.package.id !== 'free' && (
-                  <Card key={freePackage.id}>
-                    <Card.Content>
-                      <Card.Header>{freePackage.name}</Card.Header>
-                      <Card.Meta>{freePackage.price} 元/{freePackage.duration === 'monthly' ? '月' : '永久'}</Card.Meta>
-                      <Card.Description>
-                        <p>{freePackage.description}</p>
-                        <p>每月可获得 {freePackage.monthly_tokens} Token</p>
-                      </Card.Description>
-                    </Card.Content>
-                    <Card.Content extra>
-                      <div>
-                        {freePackage.features.map((feature, index) => (
-                          <Label key={index} basic>
-                            <Icon name='check' /> {feature}
-                          </Label>
-                        ))}
-                      </div>
-                    </Card.Content>
-                    <Button 
-                      attached='bottom' 
-                      disabled
-                      basic
-                    >
-                      当前免费版
-                    </Button>
-                  </Card>
-                )}
-                
-                {/* 付费套餐列表 */}
                 {packages.map(pkg => (
                   <Card key={pkg.id}>
                     <Card.Content>
                       <Card.Header>{pkg.name}</Card.Header>
-                      <Card.Meta>{pkg.price} 元/{pkg.duration === 'monthly' ? '月' : '永久'}</Card.Meta>
+                      <Card.Meta>{pkg.price} 元/{pkg.duration === 'monthly' ? '月' : '年'}</Card.Meta>
                       <Card.Description>
                         <p>{pkg.description}</p>
                         <p>每月可获得 {pkg.monthly_tokens} Token</p>

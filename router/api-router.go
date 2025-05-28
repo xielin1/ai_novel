@@ -21,6 +21,8 @@ type APIControllers struct {
 	PackageController *controller.PackageController
 
 	HealthController *controller.HealthController
+
+	//PaymentController *controller.PaymentController
 }
 
 // SetApiRouter 使用依赖注入的控制器设置API路由
@@ -79,12 +81,13 @@ func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
 		}
 
 		// 套餐管理API路由
-		packageRoute := apiRouter.Group("/packages")
+		packageRoute := apiRouter.Group("/package")
 		packageRoute.Use(middleware.UserAuth()) // 需要登录才能使用
 		{
-			//packageRoute.GET("", controllers.PackageController.GetPackages)                   // 获取套餐列表
-			//packageRoute.POST("/subscribe", controllers.PackageController.SubscribePackage)   // 购买/订阅套餐
-			//packageRoute.POST("/cancel-renewal", controllers.PackageController.CancelRenewal) // 取消自动续费
+			packageRoute.GET("/all", controllers.PackageController.GetPackages)               // 获取套餐列表
+			packageRoute.POST("/subscribe", controllers.PackageController.SubscribePackage)   // 购买/订阅套餐
+			packageRoute.POST("/cancel-renewal", controllers.PackageController.CancelRenewal) // 取消自动续费
+			packageRoute.GET("/:id", controllers.PackageController.GetPackageByID)            // 新增根据ID获取套餐接口
 		}
 
 		// 用户管理API路由
@@ -102,7 +105,7 @@ func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateToken)
-				//selfRoute.GET("/package", controllers.UserController.GetUserPackage)                               // 获取当前用户的套餐信息
+				selfRoute.GET("/package", controllers.PackageController.GetUserPackage)         // 获取当前用户的套餐信息
 				selfRoute.GET("/referral-code", controllers.ReferralController.GetReferralCode) // 获取个人推荐码
 				selfRoute.GET("/referrals", controllers.ReferralController.GetReferrals)        // 获取推荐记录
 			}

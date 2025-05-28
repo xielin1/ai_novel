@@ -61,3 +61,24 @@ type CancelRenewalResponse struct {
 	ExpiryDate  int64  `json:"expiry_date"`
 	AutoRenew   bool   `json:"auto_renew"`
 }
+
+// PaymentRequest 支付请求
+type PaymentRequest struct {
+	PackageID     int    `json:"package_id" binding:"required"`
+	PaymentMethod string `json:"payment_method" binding:"required,oneof=alipay wechat"`
+}
+
+// PaymentResponse 支付响应
+type PaymentResponse struct {
+	OrderID    string `json:"order_id"`
+	PaymentURL string `json:"payment_url"`
+}
+
+// PaymentCallbackRequest 支付回调请求
+type PaymentCallbackRequest struct {
+	OrderID     string `json:"order_id" binding:"required"`
+	PaymentID   string `json:"payment_id" binding:"required"`
+	Status      string `json:"status" binding:"required,oneof=success failed"`
+	PaymentTime string `json:"payment_time" binding:"required"`
+	Sign        string `json:"sign" binding:"required"`
+}

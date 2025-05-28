@@ -393,3 +393,54 @@ func (s *PackageService) CancelSubscriptionRenewal(userID int64) (define.CancelR
 func (s *PackageService) InitFreePackageInDB() error {
 	return s.packageRepo.InitFreePackage()
 }
+
+// GetPackageByID 根据套餐ID获取套餐详情（包括免费套餐）
+// 参数：
+//
+//	packageID: 套餐ID（免费套餐ID为预定义常量 model.FreePackage.Id）
+//
+// 返回：
+//
+//	define.PackageInfo: 套餐详情
+//	error: 错误信息（无效ID、数据库查询失败等）
+func (s *PackageService) GetPackageByID(packageID int64) (define.PackageInfo, error) {
+	// 验证套餐ID有效性
+	valid, err := s.ValidatePackageID(packageID)
+	if err != nil {
+		return define.PackageInfo{}, fmt.Errorf("套餐ID验证失败: %w", err)
+	}
+	if !valid {
+		return define.PackageInfo{}, errors.New("invalid package ID")
+	}
+
+	// 处理免费套餐特殊逻辑
+	if packageID == model.FreePackage.Id {
+		freePkg := s.packageRepo.GetFreePackage()
+		return s.parsePackageModelToInfo(freePkg), nil
+	}
+
+	// 从仓储层获取付费套餐
+	pkgModel, err := s.packageRepo.GetPackageByID(packageID)
+	if err != nil {
+		return define.PackageInfo{}, err
+	}
+
+	return s.parsePackageModelToInfo(pkgModel), nil
+}
+
+// 内部方法：将数据库模型转换为响应结构体
+func (s *PackageService) parsePackageModelToInfo(pkg *model.Package) define.PackageInfo {
+	var features []string
+	if pkg.Features != "" {
+		_ = json.Unmarshal([]byte(pkg.Features), &features) // 失败时忽略，返回空数组
+	}
+	return define.PackageInfo{
+		ID:            pkg.Id,
+		Name:          pkg.Name,
+		Description:   pkg.Description,
+		Price:         pkg.Price,
+		MonthlyTokens: pkg.MonthlyTokens,
+		Duration:      pkg.Duration,
+		Features:      features,
+	}
+}

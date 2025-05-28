@@ -1,9 +1,5 @@
 package model
 
-import (
-	"time"
-)
-
 // FreePackage 免费版套餐常量
 var FreePackage = Package{
 	Id:            0,
@@ -17,15 +13,15 @@ var FreePackage = Package{
 
 // Package 套餐模型
 type Package struct {
-	Id            int64     `json:"id" gorm:"primaryKey"`
-	Name          string    `json:"name" gorm:"type:varchar(50);not null"`
-	Description   string    `json:"description" gorm:"type:varchar(255)"`
-	Price         float64   `json:"price" gorm:"type:decimal(10,2);not null"`
-	MonthlyTokens int       `json:"monthly_tokens" gorm:"not null"`
-	Duration      string    `json:"duration" gorm:"type:varchar(20);not null"` // monthly, yearly, permanent
-	Features      string    `json:"features" gorm:"type:text"`                 // 存储为JSON字符串
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	Id            int64   `json:"id" gorm:"primaryKey"`
+	Name          string  `json:"name" gorm:"type:varchar(50);not null"`
+	Description   string  `json:"description" gorm:"type:varchar(255)"`
+	Price         float64 `json:"price" gorm:"type:decimal(10,2);not null"`
+	MonthlyTokens int     `json:"monthly_tokens" gorm:"not null"`
+	Duration      string  `json:"duration" gorm:"type:varchar(20);not null"` // monthly, yearly, permanent
+	Features      string  `json:"features" gorm:"type:text"`                 // 存储为JSON字符串
+	CreatedAt     int64   `json:"created_at"`
+	UpdatedAt     int64   `json:"updated_at"`
 }
 
 // ToResponsePackage 转换为API响应结构
