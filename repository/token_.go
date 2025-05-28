@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gin-template/define"
 	"gin-template/model"
+	"gin-template/util"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,9 +62,8 @@ func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int6
 		}
 
 		// 2. 创建初始交易记录
-		transactionUUID := GenerateTransactionUUID(userID, "initial") // 需要实现这个函数
 		transaction := model.TokenTransaction{
-			TransactionUUID:   transactionUUID,
+			TransactionUUID:   util.GetUUIDGenerator().Generate(util.BusinessInitialBalance),
 			UserID:            userID,
 			Amount:            initialBalance,
 			BalanceBefore:     0,
@@ -87,11 +87,6 @@ func (r *TokenRepository) InitUserTokenAccount(userID int64, initialBalance int6
 	}
 
 	return userToken, nil
-}
-
-// GenerateTransactionUUID 生成唯一的交易UUID
-func GenerateTransactionUUID(userID int64, prefix string) string {
-	return fmt.Sprintf("%s-%d-%s", prefix, userID, uuid.New().String())
 }
 
 // GetTransactionByUUID 根据UUID获取交易记录

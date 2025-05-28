@@ -13,11 +13,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// PackageService 套餐服务，处理套餐相关业务逻辑（如查询、购买、订阅管理等）
 type PackageService struct {
-	packageRepo  *repository.PackageRepository
-	tokenService *TokenService
+	packageRepo  *repository.PackageRepository // 套餐仓储层，负责数据库操作
+	tokenService *TokenService                 // 代币服务，用于处理购买套餐后的代币奖励
 }
 
+// NewPackageService 初始化套餐服务实例
+// 参数：
+//
+//	repo: 套餐仓储层实例
+//	tokenService: 代币服务实例（可选，处理免费套餐时可空）
+//
+// 返回：套餐服务实例
 func NewPackageService(repo *repository.PackageRepository, tokenService *TokenService) *PackageService {
 	return &PackageService{
 		packageRepo:  repo,

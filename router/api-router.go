@@ -19,13 +19,20 @@ type APIControllers struct {
 
 	// 套餐控制器
 	PackageController *controller.PackageController
+
+	HealthController *controller.HealthController
 }
 
 // SetApiRouter 使用依赖注入的控制器设置API路由
 func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
+
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
 	{
+
+		// 健康检查
+		apiRouter.GET("/v1/health", controllers.HealthController.HealthCheck)
+
 		// 基础API
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/notice", controller.GetNotice)

@@ -5,7 +5,7 @@ import (
 	"gin-template/common"
 	"gin-template/define"
 	"gin-template/repository"
-	"github.com/google/uuid"
+	"gin-template/util"
 	"github.com/lithammer/shortuuid/v4"
 	"strconv"
 )
@@ -128,7 +128,7 @@ func (s *ReferralService) UseReferralCode(userId int64, username, code string) (
 	}
 
 	// 生成交易ID
-	transactionUUID := uuid.New().String()
+	transactionUUID := util.GetUUIDGenerator().Generate(util.BusinessReferral)
 
 	// Todo 优化成异步重试，为被推荐人增加Token
 	userToken, err := s.tokenService.CreditTokenWithCompensation(

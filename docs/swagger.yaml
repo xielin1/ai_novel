@@ -1,0 +1,277 @@
+basePath: /api/v1
+definitions:
+  controller.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  define.CancelRenewalResponse:
+    properties:
+      auto_renew:
+        type: boolean
+      expiry_date:
+        type: integer
+      package_name:
+        type: string
+    type: object
+  define.CreateSubscriptionRequest:
+    properties:
+      package_id:
+        type: integer
+      payment_method:
+        type: string
+    required:
+    - package_id
+    - payment_method
+    type: object
+  define.CurrentPackageResponse:
+    properties:
+      auto_renew:
+        type: boolean
+      expiry_date:
+        type: integer
+      next_renewal_date:
+        type: integer
+      package:
+        $ref: '#/definitions/define.PackageInfo'
+      start_date:
+        type: integer
+      subscription:
+        $ref: '#/definitions/define.SubscriptionInfo'
+      subscription_status:
+        type: string
+    type: object
+  define.PackageInfo:
+    properties:
+      description:
+        type: string
+      duration:
+        description: monthly, yearly, permanent
+        type: string
+      features:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      monthly_tokens:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+    type: object
+  define.PackageResponse:
+    properties:
+      packages:
+        items:
+          $ref: '#/definitions/define.PackageInfo'
+        type: array
+    type: object
+  define.SubscriptionInfo:
+    properties:
+      auto_renew:
+        type: boolean
+      expiry_date:
+        type: integer
+      next_renewal_date:
+        type: integer
+      package_id:
+        type: integer
+      start_date:
+        type: integer
+      status:
+        description: active, expired, cancelled
+        type: string
+      user_id:
+        type: integer
+    type: object
+  define.SubscriptionResponse:
+    properties:
+      amount:
+        type: number
+      order_id:
+        type: string
+      package_name:
+        type: string
+      payment_status:
+        type: string
+      token_balance:
+        type: integer
+      tokens_awarded:
+        type: integer
+      valid_until:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Gin Template API 服务
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Gin Template API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: 用于检查服务是否正常运行
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 健康检查接口
+      tags:
+      - health
+  /packages:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all available packages, including the free
+        tier.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/define.PackageResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.Response'
+      summary: Get all packages
+      tags:
+      - Package
+  /packages/cancel-renewal:
+    post:
+      consumes:
+      - application/json
+      description: Cancels the automatic renewal for the logged-in user's active subscription.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/define.CancelRenewalResponse'
+              type: object
+        "400":
+          description: e.g., No active subscription or renewal already cancelled
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.Response'
+      summary: Cancel subscription auto-renewal
+      tags:
+      - Package
+  /packages/current:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the current package and subscription details for the
+        logged-in user.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/define.CurrentPackageResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.Response'
+      summary: Get user's current package
+      tags:
+      - Package
+  /packages/subscribe:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new subscription for the logged-in user to the specified
+        package.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Subscription Request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/define.CreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/define.SubscriptionResponse'
+              type: object
+        "400":
+          description: Invalid request format or parameters
+          schema:
+            $ref: '#/definitions/controller.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controller.Response'
+      summary: Subscribe to a package
+      tags:
+      - Package
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

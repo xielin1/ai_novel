@@ -10,16 +10,40 @@ import (
 	"gin-template/service"
 	task2 "gin-template/service/task"
 	"gin-template/task"
+	"gin-template/util"
 	"log"
 	"os"
 	"strconv"
 	"time"
 
+	_ "gin-template/docs" // 导入 swagg
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// @title           Gin Template API
+// @version         1.0
+// @description     Gin Template API 服务
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 //go:embed web/build
 var buildFS embed.FS
@@ -33,6 +57,10 @@ func main() {
 	if os.Getenv("GIN_MODE") != "debug" {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	// 初始化 UUID 生成器
+	util.NewHybridGenerator(1)
+
 	// Initialize SQL Database
 	err := model.InitDB()
 	if err != nil {
@@ -74,7 +102,10 @@ func main() {
 		server.Use(sessions.Sessions("session", store))
 	}
 
-	//  Initialize 	DBCompensation
+	// 注册 Swagger 路由
+	server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	//创建补偿表和补偿调度器
 	compensation, err2 := task.NewDBCompensation(model.DB)
 	// 创建调度器（每30秒执行一次）todo 优化成配置,增加开关配置
 	if err2 != nil {

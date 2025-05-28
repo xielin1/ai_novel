@@ -49,4 +49,5 @@ var ControllerSet = wire.NewSet(
 	controller.NewOutlineController,
 	controller.NewPackageController,
 	controller.NewReconciliationController,
+	controller.NewHealthController,
 )

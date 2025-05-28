@@ -6,13 +6,12 @@ import (
 	"gin-template/define"
 	"gin-template/model"
 	"gin-template/repository"
+	"gin-template/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type OutlineService struct {
@@ -171,7 +170,7 @@ func (s *OutlineService) GenerateOutlineWithAI(userId int64, projectId int64, co
 	}
 
 	// Generate unique transaction ID for idempotency control
-	transactionUUID := uuid.New().String()
+	transactionUUID := util.GetUUIDGenerator().Generate(util.BusinessAIWriting)
 
 	// Call AI service for continuation
 	openaiResp, err := GenerateAICompletion(openaiReq)

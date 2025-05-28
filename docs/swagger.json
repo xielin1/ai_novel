@@ -1,0 +1,431 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Gin Template API 服务",
+        "title": "Gin Template API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/health": {
+            "get": {
+                "description": "用于检查服务是否正常运行",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "健康检查接口",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/packages": {
+            "get": {
+                "description": "Retrieves a list of all available packages, including the free tier.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Package"
+                ],
+                "summary": "Get all packages",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/define.PackageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/packages/cancel-renewal": {
+            "post": {
+                "description": "Cancels the automatic renewal for the logged-in user's active subscription.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Package"
+                ],
+                "summary": "Cancel subscription auto-renewal",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/define.CancelRenewalResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "e.g., No active subscription or renewal already cancelled",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/packages/current": {
+            "get": {
+                "description": "Retrieves the current package and subscription details for the logged-in user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Package"
+                ],
+                "summary": "Get user's current package",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/define.CurrentPackageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/packages/subscribe": {
+            "post": {
+                "description": "Creates a new subscription for the logged-in user to the specified package.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Package"
+                ],
+                "summary": "Subscribe to a package",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Subscription Request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/define.CreateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/define.SubscriptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or parameters",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "controller.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "define.CancelRenewalResponse": {
+            "type": "object",
+            "properties": {
+                "auto_renew": {
+                    "type": "boolean"
+                },
+                "expiry_date": {
+                    "type": "integer"
+                },
+                "package_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "define.CreateSubscriptionRequest": {
+            "type": "object",
+            "required": [
+                "package_id",
+                "payment_method"
+            ],
+            "properties": {
+                "package_id": {
+                    "type": "integer"
+                },
+                "payment_method": {
+                    "type": "string"
+                }
+            }
+        },
+        "define.CurrentPackageResponse": {
+            "type": "object",
+            "properties": {
+                "auto_renew": {
+                    "type": "boolean"
+                },
+                "expiry_date": {
+                    "type": "integer"
+                },
+                "next_renewal_date": {
+                    "type": "integer"
+                },
+                "package": {
+                    "$ref": "#/definitions/define.PackageInfo"
+                },
+                "start_date": {
+                    "type": "integer"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/define.SubscriptionInfo"
+                },
+                "subscription_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "define.PackageInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "monthly, yearly, permanent",
+                    "type": "string"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "monthly_tokens": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
+        "define.PackageResponse": {
+            "type": "object",
+            "properties": {
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/define.PackageInfo"
+                    }
+                }
+            }
+        },
+        "define.SubscriptionInfo": {
+            "type": "object",
+            "properties": {
+                "auto_renew": {
+                    "type": "boolean"
+                },
+                "expiry_date": {
+                    "type": "integer"
+                },
+                "next_renewal_date": {
+                    "type": "integer"
+                },
+                "package_id": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "active, expired, cancelled",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "define.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "package_name": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "token_balance": {
+                    "type": "integer"
+                },
+                "tokens_awarded": {
+                    "type": "integer"
+                },
+                "valid_until": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

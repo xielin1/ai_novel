@@ -6,6 +6,7 @@ import (
 	"gin-template/define"
 	"gin-template/model"
 	"gin-template/repository"
+	"gin-template/util"
 	"sync"
 	"time"
 )
@@ -230,7 +231,8 @@ func (s *TokenReconciliationService) fixBalanceDiscrepancy(userID int64, current
 	diff := calculatedBalance - currentBalance
 
 	// 生成唯一的交易UUID
-	transactionUUID := fmt.Sprintf("recon-%d-%d", userID, time.Now().Unix())
+
+	transactionUUID := util.GetUUIDGenerator().Generate(util.BusinessReconciliation)
 	transactionType := define.TokenTransactionTypeReconciliationAdjustment
 	description := fmt.Sprintf("系统对账调整: %d -> %d", currentBalance, calculatedBalance)
 

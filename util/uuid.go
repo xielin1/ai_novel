@@ -1,4 +1,4 @@
-package service
+package util
 
 import (
 	"fmt"
@@ -12,8 +12,9 @@ import (
 const (
 	BusinessPackage        = "package"
 	BusinessReferral       = "referral"
-	BusinessReconciliation = "reconciliation"
+	BusinessReconciliation = "recon"
 	BusinessAIWriting      = "ai_writing"
+	BusinessInitialBalance = "initial_balance"
 )
 
 type UUIDGenerator interface {
@@ -26,6 +27,16 @@ type HybridGenerator struct {
 	mu        sync.Mutex
 }
 
+// 全局 UUID 生成器
+var globalUUIDGenerator *HybridGenerator
+
+func GetUUIDGenerator() *HybridGenerator {
+	return globalUUIDGenerator
+}
+func SetUUIDGenerator(uuid *HybridGenerator) {
+	globalUUIDGenerator = uuid
+}
+
 func NewHybridGenerator(machineID uint16) *HybridGenerator {
 	st := sonyflake.Settings{
 		MachineID: func() (uint16, error) {
@@ -33,9 +44,11 @@ func NewHybridGenerator(machineID uint16) *HybridGenerator {
 		},
 		StartTime: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	return &HybridGenerator{
+	uuid := &HybridGenerator{
 		sonyFlake: sonyflake.NewSonyflake(st),
 	}
+	SetUUIDGenerator(uuid)
+	return uuid
 }
 
 func (g *HybridGenerator) Generate(businessType string) string {
