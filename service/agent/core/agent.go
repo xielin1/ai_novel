@@ -165,7 +165,18 @@ func NewMultiAgent(ctx context.Context, config *config.Config) (*PlanExecuteMult
 
 // Generate 以非流式的方式调用多智能体
 func (r *PlanExecuteMultiAgent) Generate(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (output *schema.Message, err error) {
-	output, err = r.runnable.Invoke(ctx, input, agent.GetComposeOptions(opts...)...)
+	// 将原有的 opts 转换为 compose 的选项
+	composeOpts := agent.GetComposeOptions(opts...)
+
+	// 添加 WithStateModifier,这里会直接覆盖原有的state
+	composeOpts = append(composeOpts, compose.WithStateModifier(func(ctx context.Context, path compose.NodePath, s any) error {
+		state := s.(*state)
+		// 在这里更新状态
+		state.messages = append(state.messages, input...)
+		return nil
+	}))
+
+	output, err = r.runnable.Invoke(ctx, input, composeOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +187,17 @@ func (r *PlanExecuteMultiAgent) Generate(ctx context.Context, input []*schema.Me
 // Stream 以流式的方式调用多智能体
 func (r *PlanExecuteMultiAgent) Stream(ctx context.Context, input []*schema.Message, opts ...agent.AgentOption) (
 	output *schema.StreamReader[*schema.Message], err error) {
-	res, err := r.runnable.Stream(ctx, input, agent.GetComposeOptions(opts...)...)
+	// 将原有的 opts 转换为 compose 的选项
+	composeOpts := agent.GetComposeOptions(opts...)
+
+	// 添加 WithStateModifier,这里会直接覆盖原有的state
+	composeOpts = append(composeOpts, compose.WithStateModifier(func(ctx context.Context, path compose.NodePath, s any) error {
+		state := s.(*state)
+		// 在这里更新状态
+		state.messages = append(state.messages, input...)
+		return nil
+	}))
+	res, err := r.runnable.Stream(ctx, input, composeOpts...)
 	if err != nil {
 		return nil, err
 	}

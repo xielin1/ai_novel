@@ -37,6 +37,8 @@ func (s *MultiUserAgentService) Generate(ctx context.Context, req *define.Genera
 	}
 	defer s.sessionManager.GetAgentPool().ReturnAgent(agent)
 
+	//Todo 组装所有的messages
+
 	// 调用智能体生成回复
 	result, err := agent.Generate(ctx, allMessages)
 	if err != nil {
@@ -51,3 +53,5 @@ func (s *MultiUserAgentService) Generate(ctx context.Context, req *define.Genera
 		Message:   result,
 	}, nil
 }
+
+//todo  添加stream流式调用

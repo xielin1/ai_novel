@@ -26,7 +26,7 @@ var (
 	globalAgentService *service.MultiUserAgentService
 )
 
-func init() {
+func InitAgent() {
 	ctx := context.Background()
 
 	//初始化model

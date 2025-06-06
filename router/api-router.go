@@ -22,7 +22,7 @@ type APIControllers struct {
 
 	HealthController *controller.HealthController
 
-	//PaymentController *controller.PaymentController
+	AgentController *controller.AgentController
 }
 
 // SetApiRouter 使用依赖注入的控制器设置API路由
@@ -55,6 +55,13 @@ func SetApiRouter(router *gin.Engine, controllers *APIControllers) {
 			aiRoute.POST("/prompt", controller.AIPrompt)   // 提交提示并获取响应
 			aiRoute.GET("/models", controller.GetAIModels) // 获取可用模型列表
 			//aiRoute.POST("/generate/:id", controller.AIGenerate) // AI续写
+		}
+
+		// 智能体相关路由
+		agentGroup := apiRouter.Group("/v1/agent")
+		{
+			agentGroup.POST("/chat", controllers.AgentController.Chat)
+			//agentGroup.POST("/chat/stream", agentController.StreamChat)
 		}
 
 		// 项目管理API路由

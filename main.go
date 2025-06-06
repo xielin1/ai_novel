@@ -113,7 +113,9 @@ func main() {
 	}
 	scheduler := task.NewDBScheduler(compensation, 30*time.Second)
 	InitTask(scheduler)
-	scheduler.Start()
+	//scheduler.Start()
+
+	//agent.InitAgent()
 
 	router.SetRouter(server, buildFS, indexPage, controllers)
 	var port = os.Getenv("PORT")

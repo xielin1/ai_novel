@@ -38,12 +38,14 @@ func InitializeAllController(db *gorm.DB) (*router.APIControllers, error) {
 	packageService := service.NewPackageService(packageRepository, tokenService)
 	packageController := controller.NewPackageController(packageService)
 	healthController := controller.NewHealthController()
+	agentController := controller.NewAgentController()
 	apiControllers := &router.APIControllers{
 		ReferralController: referralController,
 		ProjectController:  projectController,
 		OutlineController:  outlineController,
 		PackageController:  packageController,
 		HealthController:   healthController,
+		AgentController:    agentController,
 	}
 	return apiControllers, nil
 }
@@ -57,4 +59,4 @@ var ServiceSet = wire.NewSet(service.NewOutlineService, service.NewTokenService,
 var RepositorySet = wire.NewSet(repository.NewTokenRepository, repository.NewTokenReconciliationRepository, repository.NewOutlineRepository, repository.NewProjectRepository, repository.NewReferralRepository, repository.NewPackageRepository)
 
 // 控制器依赖注入集合
-var ControllerSet = wire.NewSet(controller.NewReferralController, controller.NewProjectController, controller.NewOutlineController, controller.NewPackageController, controller.NewReconciliationController, controller.NewHealthController)
+var ControllerSet = wire.NewSet(controller.NewReferralController, controller.NewProjectController, controller.NewOutlineController, controller.NewPackageController, controller.NewReconciliationController, controller.NewHealthController, controller.NewAgentController)
