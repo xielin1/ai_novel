@@ -3,7 +3,7 @@ package define
 // OpenAI API相关配置常量
 const (
 	// OpenAI API端点
-	OpenAIAPIURL = "http://1.12.219.175:3001/v1/chat/completions"
+	OpenAIAPIURL    = "http://1.12.219.175:3001/v1/chat/completions"
 	OpenAIModelsURL = "http://1.12.219.175:3001/v1/models"
 )
 
@@ -23,12 +23,12 @@ type GenerateAIPromptRequest struct {
 
 // GenerateResponse 表示AI生成的响应
 type GenerateResponse struct {
-	Content     string `json:"content"`
-	TokensUsed  int    `json:"tokens_used"`
-	Model       string `json:"model"`
-	RequestID   string `json:"request_id"`
-	Error       string `json:"error,omitempty"`
-	StatusCode  int    `json:"-"`
+	Content    string `json:"content"`
+	TokensUsed int    `json:"tokens_used"`
+	Model      string `json:"model"`
+	RequestID  string `json:"request_id"`
+	Error      string `json:"error,omitempty"`
+	StatusCode int    `json:"-"`
 }
 
 // ModelsResponse 表示模型列表响应
@@ -40,4 +40,4 @@ type ModelsResponse struct {
 	} `json:"data"`
 	Error      string `json:"error,omitempty"`
 	StatusCode int    `json:"-"`
-} 
+}
